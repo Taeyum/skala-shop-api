@@ -1,0 +1,13 @@
+# 로컬 개발 — 호스트에서 직접 실행하고 DB만 컨테이너로 띄우는 경우
+#   docker compose up -d postgres && ./gradlew bootRun
+#
+# 기본값은 docker-compose.yml의 postgres 서비스 설정과 일치시킨 개발 전용 값이다.
+# 실제 크리덴셜은 어떤 프로파일에도 두지 않는다 — 필요하면 환경변수로 덮어쓴다.
+#
+# 포트가 5433인 이유 — 로컬에 이미 설치된 PostgreSQL과 충돌하지 않게 compose가
+# 호스트 5433으로 내보낸다. 컨테이너 안에서는 그대로 5432 (docker-compose.yml 주석 참조)
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/shopdb}
+    username: ${DB_USERNAME:shop}
+    password: ${DB_PASSWORD:shoppw}

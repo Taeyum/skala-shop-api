@@ -1,0 +1,41 @@
+services:
+  # 16으로 고정 — 마이너 버전이 올라가며 동작이 달라지는 것을 막는다 (채점 환경 재현성)
+  postgres:
+    image: postgres:16-alpine
+    container_name: skala-shop-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shopdb}
+      POSTGRES_USER: ${POSTGRES_USER:-shop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shoppw}
+    # 호스트 포트를 5433으로 내보낸다. 개발 머신에 이미 PostgreSQL이 5432를 쓰고 있으면
+    # Docker는 와일드카드(*:5432)로 바인딩에 "성공"하지만 localhost:5432는 기존 로컬 DB로 가버린다.
+    # 컨테이너 내부와 docker 프로파일은 그대로 5432를 쓴다 (JOURNAL.md 2026-08-06 참조)
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # app이 "포트 열림"이 아니라 "쿼리 가능" 상태를 기다리게 한다.
+    # depends_on만으로는 컨테이너 시작 시점까지만 보장돼 초기화 중인 DB에 붙는다
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shop} -d ${POSTGRES_DB:-shopdb}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: skala-shop-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # 컨테이너 네트워크 안에서는 서비스명이 곧 호스트명이다 (localhost 아님)
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shopdb}
+      DB_USERNAME: ${POSTGRES_USER:-shop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-shoppw}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+
+volumes:
+  postgres-data:

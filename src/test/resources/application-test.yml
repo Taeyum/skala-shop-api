@@ -1,0 +1,19 @@
+# 테스트 — Testcontainers가 띄운 PostgreSQL에 붙는다.
+# 접속 정보는 @ServiceConnection이 컨테이너에서 직접 읽어오므로 여기에 datasource를 적지 않는다.
+#
+# 컨테이너 재사용(.withReuse(true))은 개발자별 opt-in이라 저장소에 넣을 수 없다.
+# ~/.testcontainers.properties 에 testcontainers.reuse.enable=true (README 참조)
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+  # 테스트는 각자 필요한 픽스처를 직접 만든다 — 시드가 섞이면 건수 단언이 깨진다.
+  # E2E 테스트가 시드를 요구하면 Phase 4에서 재검토한다
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    org.hibernate.SQL: debug

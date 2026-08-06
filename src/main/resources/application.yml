@@ -2,19 +2,14 @@ spring:
   application:
     name: skala-shop-api
 
-  datasource:
-    url: jdbc:h2:mem:shopdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+  # 프로파일 미지정 실행(./gradlew bootRun)은 로컬 개발로 간주한다
+  profiles:
+    default: local
 
   jpa:
     hibernate:
+      # Phase 0은 스키마가 계속 바뀌므로 create. 스키마 확정 후 validate 전환을 검토한다.
+      # update는 컬럼 삭제·타입 변경을 조용히 무시해 스키마 드리프트를 만들므로 쓰지 않는다
       ddl-auto: create
     # data.sql이 Hibernate 스키마 생성 이후에 실행되도록 — 없으면 테이블 없이 INSERT가 먼저 돌아 실패한다
     defer-datasource-initialization: true
@@ -30,8 +25,11 @@ spring:
       encoding: UTF-8
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 logging:
   level:
     org.hibernate.SQL: debug
+
+# HikariCP 풀 크기는 의도적으로 기본값을 쓴다 — 근거 없는 숫자를 넣지 않는다.
+# Phase 3에서 k6 부하 측정 결과와 함께 조정한다 (PLAN.md Phase 3)

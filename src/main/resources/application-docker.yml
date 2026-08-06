@@ -1,0 +1,9 @@
+# 컨테이너 실행 — docker compose가 환경변수를 주입한다.
+#
+# 기본값을 두지 않는 것은 의도적이다. 접속 정보가 빠지면 조용히 엉뚱한 DB에 붙는 대신
+# 기동 자체가 실패해야 한다 (fail-fast).
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
