@@ -1,0 +1,6 @@
+plugins {
+    // 로컬에 JDK 17이 없어도 Gradle이 자동 프로비저닝하도록 — 팀원/채점 환경 간 빌드 재현성 확보
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'skala-shop-api'
