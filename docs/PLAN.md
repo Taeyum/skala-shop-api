@@ -9,16 +9,19 @@
 개선 전 기준점. **반드시 커밋으로 못 박는다** (N+1·성능·락 개선의 비교 대상이 된다).
 구현 순서: Entity → Repository → Service → Controller
 
-- [ ] Gradle 프로젝트 초기화, `build.gradle` 의존성
-- [ ] 엔티티 3종 (Product, Customer, OrderItem)
-- [ ] Repository 3종
-- [ ] Service 2종 (ProductService, CustomerService)
-- [ ] Controller 2종
-- [ ] `Response`, `PagedList`, `SessionHandler`(JWT)
-- [ ] `Error` enum, 예외 3종, `GlobalExceptionHandler`
-- [ ] `application.yml`, `data.sql` 시드
-- [ ] **Postman E2E 시나리오 전체 통과** (`SPEC.md` 5절)
-- [ ] 커밋: `feat: 스펙 기본 구현 완료`
+> **범위** — Phase 0은 스펙 그대로(개선 전 상태) 구현한다. `CLAUDE.md` 절대 규칙은 **완성 상태의 규칙**이고,
+> 그 규칙을 충족시키는 것이 Phase 1의 내용이다. 경위는 `JOURNAL.md` 2026-08-07 항목.
+
+- [x] Gradle 프로젝트 초기화, `build.gradle` 의존성
+- [x] 엔티티 3종 (Product, Customer, OrderItem)
+- [x] Repository 3종
+- [x] Service 2종 (ProductService, CustomerService)
+- [x] Controller 2종
+- [x] `Response`, `PagedList`, `SessionHandler`(JWT)
+- [x] `Error` enum, 예외 3종, `GlobalExceptionHandler`
+- [x] `application.yml`, `data.sql` 시드
+- [x] **E2E 시나리오 전체 통과** (`SPEC.md` 5절) — curl로 6단계 + 비즈니스 규칙 8종 확인
+- [x] 커밋: `feat: 스펙 기본 구현 완료`
 
 ## Phase 1 — 구조 재설계
 

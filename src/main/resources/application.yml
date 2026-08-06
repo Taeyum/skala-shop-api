@@ -24,6 +24,12 @@ spring:
       mode: always
       encoding: UTF-8
 
+jwt:
+  # Phase 0 기준점 — 시크릿이 저장소에 그대로 있다.
+  # 환경변수 주입·만료시간 조정·쿠키 플래그(HttpOnly/Secure/SameSite)는 Phase 2 JWT 하드닝에서 처리한다
+  secret: skala-shop-api-phase0-plaintext-secret-key
+  expiration-ms: 3600000
+
 server:
   port: ${SERVER_PORT:8080}
 
