@@ -54,6 +54,28 @@ docker compose up -d postgres
 > Docker는 와일드카드 바인딩에 성공해버려서 충돌 에러 없이 `localhost:5432`가 기존 로컬 DB로 간다.
 > 이걸 피하려고 호스트에는 5433으로 내보낸다. 컨테이너 내부와 `docker` 프로파일은 그대로 5432를 쓴다.
 
+## 포트가 이미 사용 중이라면
+
+5433이나 8080이 다른 프로세스에 잡혀 있으면 `.env`로 바꾼다. 5433도 절대 안전한 포트는 아니다.
+
+```bash
+cp .env.example .env
+# .env에서 POSTGRES_PORT=15432 처럼 비어 있는 포트로 수정
+docker compose up
+```
+
+`docker compose`는 `.env`를 자동으로 읽는다. 무엇이 포트를 잡고 있는지는 이렇게 확인한다:
+
+```bash
+lsof -nP -iTCP:5433 -sTCP:LISTEN   # macOS / Linux
+```
+
+앱을 컨테이너가 아니라 호스트에서(`bootRun`) 띄운다면 `.env`는 읽히지 않으므로 같은 값을 직접 넘긴다:
+
+```bash
+POSTGRES_PORT=15432 ./gradlew bootRun
+```
+
 기본값은 **개발 전용**이다. 실제 크리덴셜은 저장소에 두지 않고 환경변수나 `.env`로 주입한다 (`.env`는 gitignore 대상).
 
 ## 테스트

@@ -6,8 +6,12 @@
 #
 # 포트가 5433인 이유 — 로컬에 이미 설치된 PostgreSQL과 충돌하지 않게 compose가
 # 호스트 5433으로 내보낸다. 컨테이너 안에서는 그대로 5432 (docker-compose.yml 주석 참조)
+#
+# 포트는 POSTGRES_PORT 하나로 compose와 앱이 같이 움직인다.
+# compose는 .env에서, bootRun은 셸 환경변수에서 읽는다:
+#   POSTGRES_PORT=5434 ./gradlew bootRun
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5433/shopdb}
+    url: ${DB_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5433}/shopdb}
     username: ${DB_USERNAME:shop}
     password: ${DB_PASSWORD:shoppw}
