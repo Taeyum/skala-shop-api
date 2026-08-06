@@ -10,13 +10,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sk.skala.shopapi.data.Customer;
-import com.sk.skala.shopapi.data.CustomerOrder;
-import com.sk.skala.shopapi.data.OrderRequest;
+import com.sk.skala.shopapi.data.table.Customer;
+import com.sk.skala.shopapi.data.dto.CustomerSession;
+import com.sk.skala.shopapi.data.dto.OrderListDto;
+import com.sk.skala.shopapi.data.dto.OrderRequest;
 import com.sk.skala.shopapi.service.CustomerService;
-import com.sk.skala.shopapi.tools.PagedList;
-import com.sk.skala.shopapi.tools.Response;
-import com.sk.skala.shopapi.tools.SessionHandler;
+import com.sk.skala.shopapi.common.PagedList;
+import com.sk.skala.shopapi.common.Response;
+import com.sk.skala.shopapi.common.SessionHandler;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class CustomerController {
 	}
 
 	@GetMapping("/{customerId}")
-	public Response<CustomerOrder> getCustomerOrders(@PathVariable String customerId) {
+	public Response<OrderListDto> getCustomerOrders(@PathVariable String customerId) {
 		return Response.success(customerService.getCustomerOrders(customerId));
 	}
 
@@ -48,10 +49,12 @@ public class CustomerController {
 	}
 
 	@PostMapping("/login")
-	public Response<Void> login(@RequestBody Customer customer, HttpServletResponse response) {
-		sessionHandler.writeCookie(response, customerService.login(customer));
-		// 응답 바디에 고객 정보를 싣지 않는다 — 비밀번호 노출 금지 (SPEC.md 2절)
-		return Response.success();
+	public Response<Customer> login(@RequestBody CustomerSession customerSession,
+			HttpServletResponse response) {
+		Customer customer = customerService.login(customerSession);
+		sessionHandler.writeCookie(response, sessionHandler.createToken(customer.getCustomerId()));
+		// 고객 정보를 반환하되 비밀번호는 담기지 않는다 (SPEC.md 2절)
+		return Response.success(customer);
 	}
 
 	@PutMapping

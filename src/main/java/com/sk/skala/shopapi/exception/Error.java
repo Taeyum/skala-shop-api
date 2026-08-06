@@ -1,4 +1,4 @@
-package com.sk.skala.shopapi.tools;
+package com.sk.skala.shopapi.exception;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

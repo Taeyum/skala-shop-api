@@ -8,20 +8,21 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.sk.skala.shopapi.data.Customer;
-import com.sk.skala.shopapi.data.CustomerOrder;
-import com.sk.skala.shopapi.data.OrderItem;
-import com.sk.skala.shopapi.data.OrderRequest;
-import com.sk.skala.shopapi.data.OrderedProduct;
-import com.sk.skala.shopapi.data.Product;
+import com.sk.skala.shopapi.data.table.Customer;
+import com.sk.skala.shopapi.data.dto.OrderListDto;
+import com.sk.skala.shopapi.data.table.OrderItem;
+import com.sk.skala.shopapi.data.dto.OrderRequest;
+import com.sk.skala.shopapi.data.dto.CustomerSession;
+import com.sk.skala.shopapi.data.dto.OrderItemDto;
+import com.sk.skala.shopapi.data.table.Product;
 import com.sk.skala.shopapi.exception.ParameterException;
 import com.sk.skala.shopapi.exception.ResponseException;
 import com.sk.skala.shopapi.repository.CustomerRepository;
 import com.sk.skala.shopapi.repository.OrderItemRepository;
 import com.sk.skala.shopapi.repository.ProductRepository;
-import com.sk.skala.shopapi.tools.Error;
-import com.sk.skala.shopapi.tools.PagedList;
-import com.sk.skala.shopapi.tools.SessionHandler;
+import com.sk.skala.shopapi.exception.Error;
+import com.sk.skala.shopapi.common.PagedList;
+import com.sk.skala.shopapi.common.SessionHandler;
 
 import lombok.RequiredArgsConstructor;
 
@@ -45,26 +46,26 @@ public class CustomerService {
 	}
 
 	@Transactional(readOnly = true)
-	public CustomerOrder getCustomerOrders(String customerId) {
+	public OrderListDto getCustomerOrders(String customerId) {
 		Customer customer = findCustomer(customerId);
 
-		List<OrderedProduct> products = new ArrayList<>();
+		List<OrderItemDto> products = new ArrayList<>();
 		for (OrderItem item : orderItemRepository.findByCustomer(customer)) {
 			// item.getProduct()마다 SELECT가 나간다 (N+1) — Phase 3에서 fetch join으로 개선
 			Product product = item.getProduct();
-			OrderedProduct ordered = new OrderedProduct();
-			ordered.setProductId(product.getId());
-			ordered.setProductName(product.getProductName());
-			ordered.setProductPrice(product.getProductPrice());
-			ordered.setQuantity(item.getQuantity());
-			products.add(ordered);
+			products.add(OrderItemDto.builder()
+					.productId(product.getId())
+					.productName(product.getProductName())
+					.productPrice(product.getProductPrice())
+					.quantity(item.getQuantity())
+					.build());
 		}
 
-		CustomerOrder result = new CustomerOrder();
-		result.setCustomerId(customer.getCustomerId());
-		result.setCustomerPoint(customer.getCustomerPoint());
-		result.setProducts(products);
-		return result;
+		return OrderListDto.builder()
+				.customerId(customer.getCustomerId())
+				.customerPoint(customer.getCustomerPoint())
+				.products(products)
+				.build();
 	}
 
 	public Customer createCustomer(Customer customer) {
@@ -81,14 +82,26 @@ public class CustomerService {
 		return customerRepository.save(customer);
 	}
 
-	/** 로그인 성공 시 JWT를 돌려준다. 쿠키로 굽는 것은 Controller의 몫. */
-	public String login(Customer request) {
-		Customer customer = findCustomer(request.getCustomerId());
+	/**
+	 * 로그인 검증 후 응답용 고객 정보를 돌려준다 (비밀번호 제외).
+	 * 토큰 발급·쿠키 굽기는 Controller가 맡는다.
+	 */
+	public Customer login(CustomerSession session) {
+		if (session.getCustomerId() == null || session.getCustomerPassword() == null) {
+			throw new ParameterException("customerId, customerPassword");
+		}
+		Customer customer = findCustomer(session.getCustomerId());
 		// 평문 비교 — BCrypt 해싱은 Phase 2
-		if (!customer.getCustomerPassword().equals(request.getCustomerPassword())) {
+		if (!customer.getCustomerPassword().equals(session.getCustomerPassword())) {
 			throw new ResponseException(Error.NOT_AUTHENTICATED);
 		}
-		return sessionHandler.createToken(customer.getCustomerId());
+
+		// 조회한 엔티티의 비밀번호를 지워서 반환하면, 영속성 컨텍스트가 열려 있을 때
+		// 더티 체킹으로 DB의 비밀번호까지 날아간다. 응답 전용 복사본을 만든다
+		Customer result = new Customer();
+		result.setCustomerId(customer.getCustomerId());
+		result.setCustomerPoint(customer.getCustomerPoint());
+		return result;
 	}
 
 	// 본인 확인이 없다 — 남의 계정도 고칠 수 있다 (BOLA). Phase 2에서 방어

@@ -1,4 +1,4 @@
-package com.sk.skala.shopapi.tools;
+package com.sk.skala.shopapi.common;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -8,7 +8,8 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.sk.skala.shopapi.exception.NotAuthenticatedException;
+import com.sk.skala.shopapi.exception.Error;
+import com.sk.skala.shopapi.exception.ResponseException;
 
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -20,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * JWT 발급·검증과 쿠키 입출력.
- * Service가 이 클래스를 직접 주입받는 것은 스펙 구조를 따른 것이며,
+ * Service가 이 클래스를 직접 주입받는 것은 강의 자료의 구조를 따른 것이며,
  * Phase 1에서 @LoginCustomer ArgumentResolver로 웹 계층에 격리한다 (DECISIONS.md 5절).
  */
 @Component
@@ -52,7 +53,7 @@ public class SessionHandler {
 	public String getCustomerId() {
 		String token = readToken();
 		if (token == null) {
-			throw new NotAuthenticatedException();
+			throw new ResponseException(Error.NOT_AUTHENTICATED);
 		}
 		try {
 			return Jwts.parser()
@@ -62,7 +63,7 @@ public class SessionHandler {
 					.getPayload()
 					.getSubject();
 		} catch (JwtException e) {
-			throw new NotAuthenticatedException();
+			throw new ResponseException(Error.NOT_AUTHENTICATED);
 		}
 	}
 

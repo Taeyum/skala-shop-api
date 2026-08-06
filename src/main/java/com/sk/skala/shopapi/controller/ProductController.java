@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sk.skala.shopapi.data.Product;
+import com.sk.skala.shopapi.data.table.Product;
 import com.sk.skala.shopapi.service.ProductService;
-import com.sk.skala.shopapi.tools.PagedList;
-import com.sk.skala.shopapi.tools.Response;
+import com.sk.skala.shopapi.common.PagedList;
+import com.sk.skala.shopapi.common.Response;
 
 import lombok.RequiredArgsConstructor;
 

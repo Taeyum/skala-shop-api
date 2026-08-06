@@ -50,7 +50,8 @@ POST /api/customers/login
 { "customerId": "skala01", "customerPassword": "pw1234" }
 → Set-Cookie: bff-access=<JWT>
 ```
-응답 바디에 비밀번호를 포함하지 않는다.
+요청 바디는 `CustomerSession`(customerId, customerPassword)으로 받는다.
+로그인 성공 시 고객 정보를 반환하되 **비밀번호는 제외한다.**
 
 ### 주문 / 취소
 ```

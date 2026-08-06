@@ -1,4 +1,4 @@
-package com.sk.skala.shopapi.data;
+package com.sk.skala.shopapi.data.dto;
 
 import lombok.Getter;
 import lombok.Setter;

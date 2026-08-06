@@ -5,9 +5,9 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.sk.skala.shopapi.data.Customer;
-import com.sk.skala.shopapi.data.OrderItem;
-import com.sk.skala.shopapi.data.Product;
+import com.sk.skala.shopapi.data.table.Customer;
+import com.sk.skala.shopapi.data.table.OrderItem;
+import com.sk.skala.shopapi.data.table.Product;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 

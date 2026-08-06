@@ -1,4 +1,4 @@
-package com.sk.skala.shopapi.data;
+package com.sk.skala.shopapi.data.table;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

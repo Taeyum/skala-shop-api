@@ -4,12 +4,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import com.sk.skala.shopapi.data.Product;
+import com.sk.skala.shopapi.data.table.Product;
 import com.sk.skala.shopapi.exception.ParameterException;
 import com.sk.skala.shopapi.exception.ResponseException;
 import com.sk.skala.shopapi.repository.ProductRepository;
-import com.sk.skala.shopapi.tools.Error;
-import com.sk.skala.shopapi.tools.PagedList;
+import com.sk.skala.shopapi.exception.Error;
+import com.sk.skala.shopapi.common.PagedList;
 
 import lombok.RequiredArgsConstructor;
 
