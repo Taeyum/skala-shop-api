@@ -49,8 +49,17 @@ Phase 완료 시점마다 아래 체크리스트로 점검하고 결과를 **누
 - [ ] Service가 웹 타입에 의존하지 않는가 → **의존함**. `CustomerService` → `SessionHandler` → `HttpServletRequest` (Phase 1: `@LoginCustomer`)
 - [ ] 금액이 전부 BigDecimal인가 → **아님**. `Double` (Phase 1)
 
-예외: `CustomerOrder`·`OrderedProduct`·`OrderRequest`는 Phase 0인데도 별도 클래스로 뒀다.
-SPEC이 요구하는 JSON 모양을 엔티티만으로 만들 수 없어서다 (DECISIONS.md 8절).
+예외: `OrderListDto`·`OrderItemDto`·`OrderRequest`·`CustomerSession`은 Phase 0인데도 별도 클래스다.
+SPEC이 요구하는 JSON 모양을 엔티티만으로 만들 수 없고, 강의 자료도 이 4개를 `data/dto/`에 두고 있다.
+
+### E2E가 검출하지 못하는 것
+
+**E2E 시나리오(SPEC.md 5절)는 상품 가격을 변경하지 않는다.** 그래서 가장 큰 결함인
+`orderedPrice` 부재(현재가 기준 환불)를 **통과시켜 버린다.** 주문과 취소 사이에 가격이 그대로면
+현재가 환불과 주문가 환불의 결과가 같기 때문이다.
+
+즉 "E2E 통과"는 계약 이행의 증거일 뿐 정확성의 증거가 아니다. 가격을 올린 뒤 취소하는
+회귀 시나리오는 Phase 1에서 `orderedPrice`를 넣을 때 테스트로 추가한다 (PLAN.md Phase 4).
 
 ### 품질
 - [x] `./gradlew build` 통과
@@ -70,7 +79,8 @@ Phase 0 기준점이므로 **지금 고치지 않는다.** 해당 Phase에서 �
 | `PUT`/`DELETE`에 본인 확인 없음 (BOLA) | 2 |
 | 가입 시 `customerPoint`를 클라이언트가 지정 가능 (Mass Assignment) | 2 |
 | `quantity` 음수 검증 없음 — 주문 시 포인트가 늘어남 | 2 |
-| 비즈니스 예외가 전부 HTTP 200 | 2 (Error → 상태 매핑) |
+| 비즈니스 예외가 전부 HTTP 200 — 클라이언트가 HTTP 레벨에서 성공/실패를 구분할 수 없다. 바디를 파싱해야만 알 수 있어 표준 HTTP 클라이언트·게이트웨이·모니터링이 에러를 못 잡는다 | 2 (Error → 상태 매핑) |
+| **`offset` 해석 미확정** — 페이지 번호로 구현돼 있어 `offset=1&count=10`이 11번째가 아닌 **101번째**부터 반환한다. 강의 자료에 근거가 없어 외부 확인 대기 | 외부 확인 대기 |
 | 고객 삭제 시 주문이 남아 있으면 FK 제약 위반 → 500 | 2 (참조 무결성 정책) |
 | 취소 환불이 주문 시점이 아닌 **현재 가격** 기준 | 1 (`orderedPrice` 스냅샷) |
 | 고객 주문 조회에서 `item.getProduct()`마다 SELECT (N+1) | 3 |

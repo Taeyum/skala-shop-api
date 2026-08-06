@@ -44,6 +44,31 @@
 
 ## Phase 0 — 스펙 100% 구현
 
+### 2026-08-07 원본을 안 찾고 구현했더니 6곳이 어긋났다 · 재작업 30분
+
+**상황** Phase 0을 커밋한 뒤, 클래스명과 패키지 위치에 대한 지적을 받았다.
+**시도** 구현할 때 나는 `SPEC.md`만 보고 이름을 지어냈다. 강의 자료를 찾아볼 생각을 안 했다. 지적을 받고 나서야 저장소 상위 디렉터리를 뒤졌고, 2일차 PDF(인쇄 525–559)에 `skala-shop-api` 실습 섹션 전체가 있는 것을 발견했다.
+**결과** 자료와 대조하니 **6곳이 어긋나 있었다.**
+
+| 내가 만든 것 | 자료 |
+|---|---|
+| `OrderedProduct` | `OrderItemDto` |
+| `CustomerOrder` | `OrderListDto` |
+| (없음) | `CustomerSession` — 로그인 요청 DTO |
+| `NotAuthenticatedException` | 없음. `ResponseException(Error.NOT_AUTHENTICATED)`로 처리 |
+| `tools/`에 Response·PagedList·SessionHandler | `common/`. `tools/`에는 `StringUtil`만 |
+| `data/`에 엔티티+DTO 혼재 | `data/table/`과 `data/dto/`로 분리 |
+| `exception/`에 Error 없음 (`tools/`에 둠) | `exception/Error` |
+
+거기에 로그인 응답 방향도 반대였다 — 나는 비밀번호 노출을 우려해 바디를 비웠는데, 자료는 "고객 정보 반환"이다. 비밀번호만 빼면 되는 문제였다.
+
+**재현 조건** 원본 자료가 있는데 확인하지 않고 스펙 문서만 보고 구현할 때. 저장소 안에 없더라도 상위 디렉터리·다른 폴더에 있을 수 있다.
+**배운 것**
+- **"자료가 없다"고 단정하기 전에 찾아본다.** 저장소 밖에 있었을 뿐 처음부터 있었다. 30분치 재작업은 5분 탐색을 안 한 대가다
+- `DECISIONS.md` 4절에 "클래스명과 API는 100% 동일하게 유지해 대조 가능성을 확보"라고 **내가 써놓고** 그걸 어겼다. 문서에 적은 제약은 작업 시작할 때 다시 읽어야 한다
+- 다만 구조 판단 자체는 맞았다 — 자료의 `CustomerService` 필드가 `ProductRepository`·`CustomerRepository`·`OrderItemRepository`·`SessionHandler`로 내 구현과 정확히 일치했고, `getCustomerById`의 `@Transactional(readOnly = true)`도 같았다. **틀린 건 이름과 위치지 설계가 아니었다**
+- **자료 자체에도 오류가 있다.** 실습 2-3 슬라이드는 제목이 `CustomerProductRepository.java`인데 내용은 "OrderItem 엔터티를 관리"이고, 폴더 구조 슬라이드와 `CustomerService` 필드는 `OrderItemRepository`다. 원본이라고 무비판 수용할 대상은 아니다 — 세 군데 중 둘을 따랐다
+
 ### 2026-08-07 Phase 0의 범위를 문서 두 개가 반대로 말하고 있었다 · 착수 전 확인 1회
 
 **상황** Phase 0 구현 착수. 엔티티부터 쓰려던 참.
