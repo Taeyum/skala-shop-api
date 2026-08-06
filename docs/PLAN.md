@@ -62,7 +62,8 @@
 
 - [ ] 도메인 단위 테스트 (순수 JUnit, Spring 없이)
 - [ ] Service 유닛 테스트 (Mockito)
-- [ ] `@DataJpaTest` Repository 쿼리 검증
+- [ ] `@DataJpaTest` Repository 쿼리 검증 — **Testcontainers PostgreSQL 기반**
+      (`@ServiceConnection` + `.withReuse(true)`. 임베디드 DB로 대체하면 방언 차이를 못 잡는다)
 - [ ] `@WebMvcTest` Controller 검증
 - [ ] `@SpringBootTest` + MockMvc E2E 1개
 - [ ] **동시성 테스트** — `ExecutorService` + `CountDownLatch`, 100건 동시 주문 포인트 정합성
@@ -79,8 +80,12 @@
 - [ ] MDC traceId
 - [ ] Actuator health / readiness / liveness
 - [ ] Graceful shutdown
-- [ ] 프로파일 분리 (local / test / docker)
-- [ ] Dockerfile — 멀티스테이지, JRE alpine, non-root, layered jar
+- [ ] 프로파일 분리 (local / test / docker) + `docker-compose.yml` (app + postgres, healthcheck 기반 기동 순서)
+      (DB 전환에서 선구현 — 체크는 Phase 5 자체 점검에서 확인 후)
+- [ ] Dockerfile 하드닝 — non-root 유저, layered jar, JRE 슬림화
+      (compose 기동용 멀티스테이지 최소 구성은 DB 전환 시 선반영됨)
+- [ ] **HA 다중 인스턴스** — app 2개 + 로드밸런서, 무상태(JWT) 검증, 세션 없이 라운드로빈 동작 확인
+      (PostgreSQL 공유로 실증 가능해졌다 — DECISIONS.md 6절)
 - [ ] 배포 롤백 절차 문서화 (이미지 태그 전략)
 - [ ] JPA Auditing (`createdAt`, `updatedAt`)
 
@@ -91,7 +96,9 @@
 - [ ] 스파이크 테스트
 - [ ] 동시 주문 정합성 시나리오
 - [ ] **개선 전(Phase 0 커밋) vs 개선 후 비교표**
-      ⚠️ H2 인메모리이므로 절대 수치를 주장하지 않는다. **동일 환경 상대 비교**로만 서술
+      운영과 같은 DB 엔진(PostgreSQL)이므로 병목의 **성격**은 그대로 논할 수 있다.
+      다만 절대 수치는 측정 머신·컨테이너 자원에 좌우되므로, **같은 머신·같은 compose 설정**에서
+      측정한 상대 비교로 서술하고 측정 환경(CPU·메모리·컨테이너 제한)을 함께 기록한다
 
 ## Phase 7 — 보고서
 
@@ -101,6 +108,7 @@
 - [ ] 발견한 스펙 결함과 대응 (Mass Assignment, BOLA, 환불 가격, 수량 검증)
 - [ ] N+1 개선 전/후 근거
 - [ ] 성능 측정 결과
-- [ ] **미적용 패턴과 그 이유** — 서킷브레이커·벌크헤드(외부 의존성 없음), CDN(정적 자원 없음), HA 다중 인스턴스(H2 인메모리 한계)
-- [ ] MSA 전환 로드맵 — ID 참조 전환, Saga 패턴, Resilience4j, 외부 DB 분리
-- [ ] 한계 — H2와 실 DB 방언 차이, offset 페이징의 한계
+- [ ] **미적용 패턴과 그 이유** — 서킷브레이커·벌크헤드(격리할 외부 의존성이 DB 하나뿐), CDN(정적 자원 없음)
+- [ ] 기술 선택의 근거 — H2 대신 PostgreSQL을 쓴 이유와 그 덕에 측정 가능해진 것들
+- [ ] MSA 전환 로드맵 — ID 참조 전환, Saga 패턴, Resilience4j, DB 스키마 분리
+- [ ] 한계 — 단일 DB 인스턴스(복제·페일오버 없음), offset 페이징의 한계
