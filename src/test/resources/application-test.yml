@@ -20,6 +20,13 @@ spring:
     init:
       mode: never
 
+# 테스트 전용 시크릿. 비밀이 아니라 고정값이다 — 저장소에 있어도 무방하고, 오히려 고정이어야
+# 테스트가 재현 가능하다. 운영 경로(local/docker)의 값과 겹치지 않게 다르게 둔다.
+# 길이는 HS256이 요구하는 256비트를 넘어야 한다 — 짧으면 SessionHandler의 @PostConstruct가
+# 기동 시점에 거부한다(fail-fast, DECISIONS.md 9-1절). 그 검증이 테스트에도 그대로 걸린다
+jwt:
+  secret: test-only-secret-not-used-anywhere-else-0123456789
+
 logging:
   level:
     org.hibernate.SQL: debug

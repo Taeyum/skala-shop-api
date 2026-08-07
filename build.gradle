@@ -24,6 +24,7 @@ repositories {
     mavenCentral()
 }
 
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -52,6 +53,14 @@ dependencies {
 }
 
 tasks.named('test') {
+    // Testcontainers가 쓰는 docker-java는 Docker API를 기본 v1.32로 요청하는데,
+    // Docker Engine 29가 이 버전을 거부해(400) 컨테이너가 아예 뜨지 못했다.
+    //   확인: curl --unix-socket /var/run/docker.sock .../v1.32/info → 400, /v1.41/info → 200
+    // 환경변수 DOCKER_API_VERSION은 docker-java가 읽지 않는다 — 프로퍼티 이름이 api.version이다.
+    // Testcontainers 버전을 올려도(1.21.3까지 확인) 기본값은 그대로라 해결되지 않는다.
+    // 1.44는 Docker 25(2024)부터 지원한다 (JOURNAL 2026-08-07)
+    systemProperty 'api.version', '1.44'
+
     useJUnitPlatform()
     finalizedBy tasks.jacocoTestReport
 }
