@@ -144,12 +144,55 @@ scale 2 값이라 그 이하를 scale 2로 반올림해도 초과할 수 없다)
 
 ---
 
-## 5. 인증을 Service에서 Controller로 이동
+## 5. Service를 얇게, 도메인을 두껍게 — 웹 관심사 제거와 풍부한 도메인 모델
+
+> **작성 상태** — Phase 1 5단계(도메인) 완료분까지 기록. 6단계(웹 관심사 제거) 후 완성한다.
+
+두 작업을 한 항목으로 묶는 이유가 있다. **따로 보면 각각은 평범한 리팩터링이다** — "setter를 없앴다",
+"어노테이션으로 인증을 뺐다". 묶으면 하나의 방향이 된다: **Service에서 양쪽으로 밀어낸다.**
+위(웹 관심사)는 Controller로, 아래(불변식)는 엔티티로. 남는 것이 Service의 진짜 일 — 흐름 조율이다.
+
+```
+       [ Phase 0 ]                          [ Phase 1 5·6단계 ]
+
+  Controller  얇음                      Controller  인증 해결(@LoginCustomer)
+       │                                     │
+  Service     쿠키/JWT를 알고             Service     조회 → 도메인 호출 → 저장
+              잔액도 직접 계산                 │        (흐름만 남는다)
+       │                                     │
+  Entity      getter/setter 덩어리       Entity      스스로 불변식을 지킴
+```
+
+### 5-1. 불변식을 엔티티 안으로 (5단계 — 완료)
+
+**변경**: `@Setter` 전면 제거, `@NoArgsConstructor(access = PROTECTED)`, 정적 팩토리, 행위 메서드
+
+| 불변식 | 어디서 지키는가 |
+|---|---|
+| 포인트는 음수가 될 수 없다 | `Customer.usePoint()` — 부족하면 `INSUFFICIENT_FUNDS` |
+| 보유 수량을 초과해 취소할 수 없다 | `OrderItem.cancel()` — 초과하면 `INSUFFICIENT_QUANTITY` |
+| 상품명은 비어있을 수 없고 가격은 0 이하일 수 없다 | `Product.of()` / `changeInfo()` |
+| 수량과 결제 총액은 항상 함께 움직인다 | `OrderItem.addOrder()` / `cancel()` |
+
+**근거** — setter가 열려 있으면 불변식은 **호출부의 성실함에 의존한다.** Service가 검증을 잊으면 그대로
+깨진다. 검증을 데이터 옆에 두면 **어느 경로로 접근하든** 지켜진다. 실제로 `INSUFFICIENT_FUNDS`·
+`INSUFFICIENT_QUANTITY`를 던지는 코드는 이제 Service에 한 줄도 없고 전부 엔티티 안에 있다.
+
+**메서드 이름** — `addQuantity` / `reduceQuantity`를 쓰지 않았다. 이 연산들은 수량만 바꾸지 않고
+`orderedAmount`를 함께 움직인다(2·3절). 수량만 다루는 것처럼 읽히는 이름을 두면 나중에 "수량만
+조정하면 되는데" 하고 한쪽만 바꾸는 호출이 생긴다. **거래 한 건을 더하고 취소한다**는 뜻이 드러나도록
+`addOrder(quantity, amount)` / `cancel(quantity)`로 정했다. 경위는 `JOURNAL.md` 2026-08-07.
+
+**트레이드오프**: 테스트에서 임의 상태의 엔티티를 만들기 번거로워진다. Phase 4에서 픽스처 팩토리로 해결한다.
+
+### 5-2. 웹 관심사를 Controller로 (6단계 — 예정)
 
 **스펙**: `CustomerService`가 `SessionHandler`를 주입받음
-**변경**: `@LoginCustomer` ArgumentResolver로 Controller에서 해결, Service는 `customerId`만 받음
+**변경 예정**: `@LoginCustomer` ArgumentResolver로 Controller에서 해결, Service는 `customerId`만 받음.
+Service의 `Response` 반환도 제거하고 DTO를 반환한다.
 
-**근거**: 쿠키·JWT·세션은 웹 계층 관심사다. Service가 이를 알면 ① 순수 단위 테스트가 불가능하고 ② 배치·스케줄러가 같은 로직을 재사용할 수 없으며 ③ 인증 방식 변경이 도메인 로직에 파급된다.
+**근거**: 쿠키·JWT·세션은 웹 계층 관심사다. Service가 이를 알면 ① 순수 단위 테스트가 불가능하고
+② 배치·스케줄러가 같은 로직을 재사용할 수 없으며 ③ 인증 방식 변경이 도메인 로직에 파급된다.
 
 **API 영향**: 없음.
 

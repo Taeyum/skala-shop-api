@@ -1,7 +1,5 @@
 package com.sk.skala.shopapi.service;
 
-import java.math.BigDecimal;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -15,7 +13,6 @@ import com.sk.skala.shopapi.exception.Error;
 import com.sk.skala.shopapi.exception.ParameterException;
 import com.sk.skala.shopapi.exception.ResponseException;
 import com.sk.skala.shopapi.repository.ProductRepository;
-import com.sk.skala.shopapi.tools.StringUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,14 +35,12 @@ public class ProductService {
 	}
 
 	public Response<ProductResponse> createProduct(ProductRequest request) {
-		validate(request);
-		if (productRepository.existsByProductName(request.getProductName())) {
+		// 이름·가격 검증은 Product.of가 한다. request.getId()는 무시한다 —
+		// 서버가 채울 값을 클라이언트가 정하게 두지 않는다
+		Product product = Product.of(request.getProductName(), request.getProductPrice());
+		if (productRepository.existsByProductName(product.getProductName())) {
 			throw new ResponseException(Error.DATA_DUPLICATED, "Product name already exists");
 		}
-		// request.getId()는 무시한다 — 서버가 채울 값을 클라이언트가 정하게 두지 않는다
-		Product product = new Product();
-		product.setProductName(request.getProductName());
-		product.setProductPrice(request.getProductPrice());
 		return Response.success(ProductResponse.from(productRepository.save(product)));
 	}
 
@@ -53,10 +48,8 @@ public class ProductService {
 		if (request.getId() == null) {
 			throw new ParameterException("id");
 		}
-		validate(request);
 		Product found = findProduct(request.getId());
-		found.setProductName(request.getProductName());
-		found.setProductPrice(request.getProductPrice());
+		found.changeInfo(request.getProductName(), request.getProductPrice());
 		return Response.success(ProductResponse.from(productRepository.save(found)));
 	}
 
@@ -72,15 +65,5 @@ public class ProductService {
 	public Product findProduct(Long id) {
 		return productRepository.findById(id)
 				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "Product not found"));
-	}
-
-	/** 상품명이 비어있거나 가격이 0 이하면 거부한다. */
-	private void validate(ProductRequest request) {
-		// BigDecimal 비교는 compareTo — equals는 scale까지 보므로 0 != 0.00이 된다
-		if (StringUtil.isAnyEmpty(request.getProductName())
-				|| request.getProductPrice() == null
-				|| request.getProductPrice().compareTo(BigDecimal.ZERO) <= 0) {
-			throw new ParameterException("productName, productPrice");
-		}
 	}
 }
