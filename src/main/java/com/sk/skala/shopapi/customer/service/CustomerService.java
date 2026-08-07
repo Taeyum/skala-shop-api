@@ -78,8 +78,8 @@ public class CustomerService {
 		return CustomerResponse.from(customer);
 	}
 
-	// 본인 확인이 없다 — 남의 계정도 고칠 수 있다 (BOLA). Phase 2에서 방어
-	public CustomerResponse updateCustomer(CustomerUpdateRequest request) {
+	public CustomerResponse updateCustomer(String loginCustomerId, CustomerUpdateRequest request) {
+		requireOwner(loginCustomerId, request.getCustomerId());
 		Customer customer = findCustomer(request.getCustomerId());
 		// 각 값의 유효성은 Customer가 판단한다 (음수 포인트 거부 등)
 		if (request.getCustomerPassword() != null) {
@@ -91,9 +91,26 @@ public class CustomerService {
 		return CustomerResponse.from(customerRepository.save(customer));
 	}
 
-	public void deleteCustomer(CustomerRequest request) {
-		// 주문 내역이 남아 있으면 FK 제약에 걸린다 — 참조 무결성 정책은 Phase 2에서 정한다
+	public void deleteCustomer(String loginCustomerId, CustomerRequest request) {
+		requireOwner(loginCustomerId, request.getCustomerId());
+		// 주문 내역이 남아 있으면 FK 제약에 걸린다 — 참조 무결성 정책은 B-5에서 정한다
 		customerRepository.delete(findCustomer(request.getCustomerId()));
+	}
+
+	/**
+	 * BOLA(Broken Object Level Authorization) 방어 — OWASP API Security Top 10 #1.
+	 * <p>
+	 * 인증만으로는 부족하다. 로그인한 사용자가 <b>남의 식별자</b>를 바디에 넣어 보내면
+	 * 그대로 통했다. 인증(누구인가)과 인가(그 대상에 권한이 있는가)는 다른 검사다.
+	 * <p>
+	 * 대상이 존재하는지 <b>확인하기 전에</b> 소유권을 본다 — 순서를 바꾸면 남의 계정에 대해
+	 * 404와 403이 갈려 계정 존재 여부가 노출된다 (9-3절 사용자 열거와 같은 형태).
+	 */
+	public void requireOwner(String loginCustomerId, String targetCustomerId) {
+		if (!loginCustomerId.equals(targetCustomerId)) {
+			throw new ResponseException(Error.NOT_OWNER,
+					"login=" + loginCustomerId + " target=" + targetCustomerId);
+		}
 	}
 
 	/**

@@ -1,6 +1,7 @@
 package com.sk.skala.shopapi.customer.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 
@@ -20,5 +21,7 @@ public class CustomerUpdateRequest {
 	@NotBlank
 	private String customerId;
 	private String customerPassword;
+	// 음수 거부. 엔티티(Customer.changePoint)에도 같은 불변식이 있다 — 웹 진입은 한 겹일 뿐이다
+	@PositiveOrZero
 	private BigDecimal customerPoint;
 }

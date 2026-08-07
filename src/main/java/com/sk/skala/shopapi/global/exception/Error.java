@@ -23,7 +23,18 @@ public enum Error {
 	INSUFFICIENT_FUNDS(HttpStatus.BAD_REQUEST, "insufficient funds"),
 	INSUFFICIENT_QUANTITY(HttpStatus.BAD_REQUEST, "insufficient quantity"),
 
-	NOT_AUTHENTICATED(HttpStatus.UNAUTHORIZED, "not authenticated");
+	/** 인증 실패 — <b>누구인지</b> 확인되지 않았다. 401 */
+	NOT_AUTHENTICATED(HttpStatus.UNAUTHORIZED, "not authenticated"),
+
+	/**
+	 * 인가 실패 — 누구인지는 알지만 <b>그 대상에 대한 권한</b>이 없다. 403
+	 * <p>
+	 * 이름을 {@code NOT_AUTHORIZED}로 하지 않았다. {@code NOT_AUTHENTICATED}와 철자가 두 글자
+	 * 차이라 코드에서 눈으로 구별되지 않고, 401/403을 뒤바꿔 쓰는 실수가 정확히 그 혼동에서 나온다.
+	 * {@code NOT_OWNER}는 무엇이 문제인지를 직접 말한다 — <b>요청 대상이 본인 소유가 아니다.</b>
+	 * 역할(admin 등) 기반 인가가 생기면 그때 별도 코드를 추가한다.
+	 */
+	NOT_OWNER(HttpStatus.FORBIDDEN, "not the owner of the resource");
 
 	private final HttpStatus status;
 	private final String message;

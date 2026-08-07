@@ -22,7 +22,7 @@
 | Method | URI | 설명 | 인증 |
 |---|---|---|---|
 | GET | `/api/customers/list?offset=0&count=10` | 전체 목록 (페이징) | 불필요 |
-| GET | `/api/customers/{customerId}` | 고객 정보 + 주문 상품 목록 | 불필요 |
+| GET | `/api/customers/{customerId}` | 고객 정보 + 주문 상품 목록 | **본인만** |
 | POST | `/api/customers` | 회원가입 | 불필요 |
 | POST | `/api/customers/login` | 로그인 → JWT 쿠키 발급 | 불필요 |
 | PUT | `/api/customers` | 정보 수정 | **본인만** |
@@ -30,8 +30,13 @@
 | POST | `/api/customers/order` | 상품 주문 | **필수** |
 | POST | `/api/customers/cancel` | 주문 취소 | **필수** |
 
-> `PUT`/`DELETE`의 인증 요구는 스펙에 없으나 BOLA 취약점 방어를 위해 추가한 것 (`DECISIONS.md` 참조).
-> URI와 요청 형식은 그대로 유지한다.
+> `PUT`/`DELETE`/`GET {customerId}`의 인증 요구는 자료에 없으나 **BOLA 취약점 방어를 위해 추가**한 것이다
+> (`DECISIONS.md` 9-5절). 주문 이력과 잔액은 개인정보이므로 본인만 조회·수정·삭제한다.
+> **URI와 요청/응답 형식은 그대로 유지한다.**
+>
+> `GET /api/customers/list`(전체 고객 목록)는 **인증 불필요를 유지**했다. 익명 노출이 바람직하지 않다는
+> 것은 인지하고 있으나, 올바른 해법은 관리자 역할 기반 접근 제어이고 이 프로젝트에 역할 개념이 없다.
+> "로그인만 요구"는 가입이 자유로워 실질적 방어가 되지 못한다. 한계로 기록한다 (`REVIEW.md`).
 
 ---
 

@@ -41,7 +41,9 @@ public class OrderService {
 	 * 고객 도메인이 조립하면 customer → order 의존이 생겨 순환이 된다.
 	 */
 	@Transactional(readOnly = true)
-	public OrderListDto getCustomerOrders(String customerId) {
+	public OrderListDto getCustomerOrders(String loginCustomerId, String customerId) {
+		// 주문 이력과 잔액은 개인정보다. PUT·DELETE와 같은 BOLA 방어를 적용한다 (DECISIONS.md 9-5절)
+		customerService.requireOwner(loginCustomerId, customerId);
 		Customer customer = customerService.findCustomer(customerId);
 
 		List<OrderItemDto> products = new ArrayList<>();

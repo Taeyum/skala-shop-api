@@ -44,9 +44,12 @@ public class CustomerController {
 		return Response.success(customerService.getAllCustomers(offset, count));
 	}
 
+	// 자료는 인증 불필요로 두었으나 주문 이력·잔액은 개인정보다.
+	// PUT·DELETE에 BOLA 방어를 추가한 것과 같은 이유로 본인만 조회하게 한다 (SPEC.md 1절 주석)
 	@GetMapping("/{customerId}")
-	public Response<OrderListDto> getCustomerById(@PathVariable String customerId) {
-		return Response.success(orderService.getCustomerOrders(customerId));
+	public Response<OrderListDto> getCustomerById(@LoginCustomer String loginCustomerId,
+			@PathVariable String customerId) {
+		return Response.success(orderService.getCustomerOrders(loginCustomerId, customerId));
 	}
 
 	@PostMapping
@@ -61,15 +64,18 @@ public class CustomerController {
 		return Response.success(customer);
 	}
 
+	// SPEC 1절이 "본인만"으로 표시한 항목 — @LoginCustomer로 인증을 강제하고 소유권을 확인한다
 	@PutMapping
-	public Response<CustomerResponse> updateCustomer(@Valid @RequestBody CustomerUpdateRequest request) {
-		return Response.success(customerService.updateCustomer(request));
+	public Response<CustomerResponse> updateCustomer(@LoginCustomer String loginCustomerId,
+			@Valid @RequestBody CustomerUpdateRequest request) {
+		return Response.success(customerService.updateCustomer(loginCustomerId, request));
 	}
 
 	// 탈퇴는 customerId만 보내므로 @Valid를 걸지 않는다 — 걸면 customerPassword까지 요구하게 된다
 	@DeleteMapping
-	public Response<Void> deleteCustomer(@RequestBody CustomerRequest request) {
-		customerService.deleteCustomer(request);
+	public Response<Void> deleteCustomer(@LoginCustomer String loginCustomerId,
+			@RequestBody CustomerRequest request) {
+		customerService.deleteCustomer(loginCustomerId, request);
 		return Response.success();
 	}
 
