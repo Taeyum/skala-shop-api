@@ -8,7 +8,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -90,6 +95,59 @@ public class GlobalExceptionHandler {
 		log.debug("optimistic lock conflict: {}", e.getMessage());
 		return ResponseEntity.status(Error.CONCURRENT_MODIFICATION.getStatus())
 				.body(Response.fail(Error.CONCURRENT_MODIFICATION.name()));
+	}
+
+	// ── 여기부터: 스프링 MVC가 던지는 요청 오류들 ────────────────────────────
+	//
+	// 이 핸들러들이 없으면 전부 아래 일반 핸들러로 떨어져 **클라이언트 잘못이 500으로 나간다.**
+	// Phase 5에서 Actuator를 붙이며 닫힌 엔드포인트를 두드려보다 발견했다 —
+	// 없는 URL, 지원하지 않는 메서드, 잘못된 Content-Type, 경로 변수 타입 불일치가
+	// 모두 500 + ERROR 로그(스택트레이스 48줄)를 만들고 있었다.
+	//
+	// 상태 코드가 틀린 것보다 **로그가 더 문제다.** 스캐너가 /wp-admin 같은 경로를 훑기만 해도
+	// ERROR 레벨 스택트레이스가 쌓여 진짜 장애를 덮는다. 운영에서 알람이 무의미해지는 경로다.
+
+	/** 없는 엔드포인트 → 404. 경로를 응답에 되비추지 않는다 — 로그에만 남긴다 */
+	@ExceptionHandler({ NoResourceFoundException.class, NoHandlerFoundException.class })
+	public ResponseEntity<Response<Void>> handleNotFound(Exception e) {
+		log.debug("no such endpoint: {}", e.getMessage());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Response.fail("no such endpoint"));
+	}
+
+	/**
+	 * 지원하지 않는 HTTP 메서드 → 405.
+	 * {@code Allow} 헤더에 지원 메서드를 담는다 — 405의 규격이 요구하는 것이고,
+	 * 클라이언트가 무엇을 써야 하는지 알 수 있다.
+	 */
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<Response<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
+		log.debug("method not allowed: {}", e.getMessage());
+		ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+		if (e.getSupportedHttpMethods() != null) {
+			builder.allow(e.getSupportedHttpMethods().toArray(new org.springframework.http.HttpMethod[0]));
+		}
+		return builder.body(Response.fail("method not allowed"));
+	}
+
+	/** Content-Type이 맞지 않음 → 415 */
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	public ResponseEntity<Response<Void>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException e) {
+		log.debug("unsupported media type: {}", e.getMessage());
+		return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+				.body(Response.fail("unsupported media type"));
+	}
+
+	/**
+	 * 경로 변수·쿼리 파라미터의 타입이 맞지 않음 → 400. ({@code /api/products/abc})
+	 * <p>
+	 * {@code MethodArgumentTypeMismatchException}의 상위 타입으로 받는다 —
+	 * 바인딩 과정의 타입 불일치를 한자리에서 처리한다.
+	 */
+	@ExceptionHandler(TypeMismatchException.class)
+	public ResponseEntity<Response<Void>> handleTypeMismatch(TypeMismatchException e) {
+		log.debug("type mismatch: {}", e.getMessage());
+		// 값을 응답에 싣지 않는다 — 입력을 그대로 되비추면 그 자체가 반사 경로가 된다
+		return ResponseEntity.badRequest().body(Response.fail("invalid parameter type"));
 	}
 
 	/**

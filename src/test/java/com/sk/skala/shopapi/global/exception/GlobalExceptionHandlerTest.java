@@ -4,8 +4,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -116,6 +119,50 @@ class GlobalExceptionHandlerTest {
 						.content("{\"id\":1,\"productName\":\"무선마우스\",\"productPrice\":15000}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").value("invalid parameter: productName, productPrice"));
+	}
+
+	// ── 스프링 MVC 요청 오류 — 클라이언트 잘못이 500으로 나가지 않아야 한다 ──────
+	//
+	// Phase 5에서 Actuator를 붙이며 닫힌 엔드포인트를 두드려보다 발견했다.
+	// Phase 2에서 @ExceptionHandler(Exception.class)를 넣은 이후 줄곧 500이었는데,
+	// 테스트가 전부 **실재하는 경로만** 호출해서 드러나지 않았다.
+
+	@Test
+	@DisplayName("없는 엔드포인트는 404다 (500이 아니다)")
+	void 없는_엔드포인트는_404() throws Exception {
+		mockMvc.perform(get("/api/products/list/does-not-exist"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.message").value("no such endpoint"))
+				// 요청 경로를 응답에 되비추지 않는다 — 입력 반사 경로를 만들지 않는다
+				.andExpect(content().string(Matchers.not(Matchers.containsString("does-not-exist"))));
+	}
+
+	@Test
+	@DisplayName("지원하지 않는 메서드는 405이고 Allow 헤더를 준다")
+	void 지원하지_않는_메서드는_405() throws Exception {
+		mockMvc.perform(patch("/api/products"))
+				.andExpect(status().isMethodNotAllowed())
+				.andExpect(jsonPath("$.message").value("method not allowed"))
+				// 405의 규격이 요구한다 — 클라이언트가 무엇을 써야 하는지 알 수 있어야 한다
+				.andExpect(header().exists("Allow"));
+	}
+
+	@Test
+	@DisplayName("Content-Type이 맞지 않으면 415다")
+	void 잘못된_ContentType은_415() throws Exception {
+		mockMvc.perform(post("/api/products").contentType(MediaType.TEXT_PLAIN).content("x"))
+				.andExpect(status().isUnsupportedMediaType())
+				.andExpect(jsonPath("$.message").value("unsupported media type"));
+	}
+
+	@Test
+	@DisplayName("경로 변수 타입이 맞지 않으면 400이다")
+	void 경로_변수_타입_불일치는_400() throws Exception {
+		mockMvc.perform(get("/api/products/abc"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("invalid parameter type"))
+				// 들어온 값을 그대로 되돌려주지 않는다
+				.andExpect(content().string(Matchers.not(Matchers.containsString("abc"))));
 	}
 
 	private static String messageOf(String body) {

@@ -84,6 +84,9 @@ def jacocoExcludes = [
 
 tasks.named('jacocoTestReport') {
     dependsOn tasks.test
+    // classDirectories를 직접 지정하면서 compileJava와의 암묵 의존이 끊긴다.
+    // 명시하지 않으면 ./gradlew build -x test 같은 조합에서 태스크 순서 경고로 빌드가 실패한다
+    dependsOn tasks.compileJava
     reports {
         csv.required = true
         xml.required = true
@@ -95,6 +98,7 @@ tasks.named('jacocoTestReport') {
 
 tasks.named('jacocoTestCoverageVerification') {
     dependsOn tasks.jacocoTestReport
+    dependsOn tasks.compileJava
     classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
         fileTree(dir: it, exclude: jacocoExcludes)
     }))
