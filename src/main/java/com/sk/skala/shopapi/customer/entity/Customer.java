@@ -66,14 +66,31 @@ public class Customer {
 	 * Service를 우회해 엔티티를 직접 다뤄도 이 불변식은 깨지지 않는다.
 	 */
 	public void usePoint(BigDecimal amount) {
+		// 음수 결제액은 차감이 아니라 증가가 된다. Bean Validation은 웹 진입만 지키므로
+		// 불변식은 여기서도 지킨다 (DECISIONS.md 9-4절)
+		requirePositive(amount);
 		if (customerPoint.compareTo(amount) < 0) {
 			throw new ResponseException(Error.INSUFFICIENT_FUNDS);
 		}
 		this.customerPoint = this.customerPoint.subtract(amount);
 	}
 
+	/**
+	 * 환불. <b>음수 환불을 막는 것이 핵심이다.</b>
+	 * <p>
+	 * 이 메서드에는 잔액 검사가 없다 — 환불은 잔액을 늘리는 연산이라 필요 없기 때문이다.
+	 * 그래서 음수를 허용하면 {@code usePoint}의 잔액 검사를 <b>우회해 포인트를 차감</b>할 수 있고,
+	 * 잔액이 음수가 된다. 실제로 취소 수량에 음수를 넣어 이 경로가 열려 있었다.
+	 */
 	public void refundPoint(BigDecimal amount) {
+		requirePositive(amount);
 		this.customerPoint = this.customerPoint.add(amount);
+	}
+
+	private static void requirePositive(BigDecimal amount) {
+		if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new ParameterException("amount");
+		}
 	}
 
 	/** {@code encodedPassword}는 이미 해싱된 값이어야 한다. */

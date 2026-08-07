@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.customer.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 import java.math.BigDecimal;
 
 import lombok.Getter;
@@ -15,6 +17,7 @@ import lombok.Setter;
 @Setter
 public class CustomerUpdateRequest {
 
+	@NotBlank
 	private String customerId;
 	private String customerPassword;
 	private BigDecimal customerPoint;

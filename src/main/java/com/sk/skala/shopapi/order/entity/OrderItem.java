@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 
 import com.sk.skala.shopapi.customer.entity.Customer;
 import com.sk.skala.shopapi.global.exception.Error;
+import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.exception.ResponseException;
 import com.sk.skala.shopapi.product.entity.Product;
 
@@ -73,6 +74,7 @@ public class OrderItem {
 	 * 뜻이 이름에 드러나야 한다.
 	 */
 	public void addOrder(int quantity, BigDecimal amount) {
+		requirePositive(quantity);
 		this.quantity += quantity;
 		this.orderedAmount = this.orderedAmount.add(amount);
 	}
@@ -85,6 +87,9 @@ public class OrderItem {
 	 * 이 계산을 밖에 두면 호출자가 내부 상태를 꺼내 써야 한다.
 	 */
 	public BigDecimal cancel(int quantity) {
+		// 음수 취소는 수량을 늘리고 환불액을 음수로 만든다 — 취소가 주문이 되어버린다.
+		// 실제로 2개 보유 상태에서 -10 취소가 수량을 12로 부풀렸다 (DECISIONS.md 9-4절)
+		requirePositive(quantity);
 		if (this.quantity < quantity) {
 			throw new ResponseException(Error.INSUFFICIENT_QUANTITY);
 		}
@@ -103,6 +108,12 @@ public class OrderItem {
 		// 남은 총액은 재계산이 아니라 차감 — 반올림 잔여가 잔액에 남아 다음 취소로 이월된다
 		this.orderedAmount = this.orderedAmount.subtract(refund);
 		return refund;
+	}
+
+	private static void requirePositive(int quantity) {
+		if (quantity <= 0) {
+			throw new ParameterException("quantity");
+		}
 	}
 
 	/** 전량 취소되어 행을 지워야 하는 상태인가. */

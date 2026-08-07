@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.customer.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +16,8 @@ import lombok.Setter;
 @Setter
 public class CustomerRequest {
 
+	@NotBlank
 	private String customerId;
+	@NotBlank
 	private String customerPassword;
 }

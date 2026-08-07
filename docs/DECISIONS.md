@@ -552,6 +552,79 @@ business error: NOT_AUTHENTICATED: password mismatch
 
 ---
 
+## 9-4. Bean Validation 도입과 ParameterException의 남은 자리 (Phase 2 B-2)
+
+### 고치기 전에 실제로 뚫리는지 확인했다
+
+Phase 0 점검에 "`quantity` 음수 검증 없음"이 적혀 있었지만, 5단계에서 불변식을 엔티티로 옮기며
+이미 막혔을 수도 있었다. **먼저 재현해봤다.**
+
+| 시나리오 | 결과 |
+|---|---|
+| `quantity=-5` 주문 | 잔액 **1,000,000 → 1,075,000** (75,000 증가). DB에 `(-5, -75000.00)` |
+| `quantity=0` 주문 | 의미 없는 행이 생성됨 |
+| `quantity=-10` 취소 (2개 보유) | 수량 **2 → 12**로 증가, 잔액 970,000 → 820,000 |
+
+**둘 다 뚫려 있었다.** 특히 두 번째가 더 위험하다. `refundPoint`에는 잔액 검사가 없다 —
+환불은 잔액을 늘리는 연산이니 필요가 없기 때문이다. 그래서 **음수 환불은 `usePoint`의 잔액 검사를
+우회해 포인트를 차감**하며, 잔액이 음수까지 갈 수 있다. "포인트는 음수가 될 수 없다"는 불변식이
+**정상 경로가 아닌 곳으로 뚫려 있었다.**
+
+### 두 계층으로 막는다
+
+| 계층 | 무엇 | 왜 |
+|---|---|---|
+| 웹 진입 | `@NotNull @Positive quantity` 등 | 잘못된 요청을 도메인까지 내려보내지 않는다 |
+| 도메인 | `usePoint`/`refundPoint`/`addOrder`/`cancel`의 양수 검사 | Bean Validation은 **HTTP 진입만** 지킨다. 배치·다른 Service가 부르면 통과한다 |
+
+5단계의 "Service를 우회해도 막힌다"와 같은 원칙이다. Bean Validation은 **한 겹**이지 전부가 아니다.
+
+### 역할 분담 — MethodArgumentNotValidException이 기본, ParameterException은 나머지
+
+Bean Validation은 **필드 단위 선언적 검증**에 강하고, 필드 간 관계나 조회가 필요한 검증은 표현이 어렵다.
+그 경계대로 갈랐다.
+
+| 검증 | 담당 |
+|---|---|
+| 값이 비었는가·양수인가 (`@NotBlank`, `@NotNull`, `@Positive`) | Bean Validation |
+| 조회해야 아는 것 (중복 ID, 존재 여부) | `ResponseException` (기존 그대로) |
+| 나머지 | `ParameterException` |
+
+**`ParameterException`이 던져지는 자리는 실제로 크게 줄었다.** 자료의 이 예외는
+**Bean Validation 도입 전 수동 검증을 위한 것**이었고, 도입 후에는 두 경우에만 남는다.
+
+**① 연산에 따라 필수 여부가 달라지는 필드** — `ProductRequest.id`는 등록에는 불필요하고 수정·삭제에는
+필수다. 하나의 DTO에 `@NotNull`을 걸면 등록이 막힌다. Bean Validation의 *validation groups*로 표현할 수
+있지만, 그룹 인터페이스를 만들고 `@Validated(Update.class)`로 갈아끼우는 비용이 조건 두 줄보다 크다.
+
+**② 엔티티가 지키는 도메인 불변식** — `Product.of`, `Customer.register`·`changePassword`·`changePoint`,
+`usePoint`/`refundPoint`/`addOrder`/`cancel`의 양수 검사. 이들은 **웹 진입과 무관하게** 지켜져야 한다.
+
+반대로 **사라진 자리**도 기록해둔다.
+- `OrderService`의 `productId`·`quantity` null 검사 → `@NotNull`이 대체
+- `CustomerService.loginCustomer`의 `isAnyEmpty` → `CustomerSession`의 `@NotBlank`가 대체.
+  6단계에서 "Phase 2 Bean Validation에서 Controller로 올라간다"고 예고한 항목이 실제로 올라갔다
+
+### 응답 형식 — 자료의 형식에 맞췄다
+
+`MethodArgumentNotValidException`은 필드별 오류를 여러 개 담지만 공통 `Response`의 `message`는 하나뿐이다.
+자료가 `ParameterException("productName", "productPrice")`처럼 **필드명을 나열**하는 형식이었으므로 그대로 따랐다.
+
+```
+POST /api/products {"productName":"","productPrice":-1}
+→ 400 {"message":"invalid parameter: productName, productPrice"}
+```
+
+필드명을 **정렬**한다. 검증 순서가 보장되지 않아 같은 요청에 메시지가 달라지면 클라이언트가 비교할 수 없다.
+
+### `@Valid`를 삭제 경로에 걸지 않는 이유
+
+`CustomerRequest`는 가입(둘 다 필요)과 탈퇴(`customerId`만)에서 함께 쓰인다. `ProductRequest`도
+등록·수정(이름·가격 필요)과 삭제(`id`만)에서 함께 쓰인다. 삭제에 `@Valid`를 걸면 **보내지 않아도 되는
+필드를 요구**하게 된다. 그래서 `@Valid`를 메서드별로 선택 적용했다 — 위 ①과 같은 뿌리의 문제다.
+
+---
+
 ## 10. Phase 0에서 자료를 따를지 판단하는 기준
 
 개별 항목의 근거만 쌓이면 케이스마다 판단이 흔들린다. 판정 가능한 기준을 먼저 둔다.

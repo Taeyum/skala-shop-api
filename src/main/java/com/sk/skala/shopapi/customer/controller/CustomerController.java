@@ -23,6 +23,7 @@ import com.sk.skala.shopapi.order.dto.OrderRequest;
 import com.sk.skala.shopapi.order.service.OrderService;
 import com.sk.skala.shopapi.customer.service.CustomerService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -49,22 +50,23 @@ public class CustomerController {
 	}
 
 	@PostMapping
-	public Response<CustomerResponse> createCustomer(@RequestBody CustomerRequest request) {
+	public Response<CustomerResponse> createCustomer(@Valid @RequestBody CustomerRequest request) {
 		return Response.success(customerService.createCustomer(request));
 	}
 
 	@PostMapping("/login")
-	public Response<CustomerResponse> loginCustomer(@RequestBody CustomerSession customerSession) {
+	public Response<CustomerResponse> loginCustomer(@Valid @RequestBody CustomerSession customerSession) {
 		CustomerResponse customer = customerService.loginCustomer(customerSession);
 		sessionHandler.storeAccessToken(customer.getCustomerId());
 		return Response.success(customer);
 	}
 
 	@PutMapping
-	public Response<CustomerResponse> updateCustomer(@RequestBody CustomerUpdateRequest request) {
+	public Response<CustomerResponse> updateCustomer(@Valid @RequestBody CustomerUpdateRequest request) {
 		return Response.success(customerService.updateCustomer(request));
 	}
 
+	// 탈퇴는 customerId만 보내므로 @Valid를 걸지 않는다 — 걸면 customerPassword까지 요구하게 된다
 	@DeleteMapping
 	public Response<Void> deleteCustomer(@RequestBody CustomerRequest request) {
 		customerService.deleteCustomer(request);
@@ -74,14 +76,14 @@ public class CustomerController {
 	// 쿠키·JWT 해석은 ArgumentResolver가 끝낸다. Service는 customerId만 받는다
 	@PostMapping("/order")
 	public Response<Void> placeOrder(@LoginCustomer String customerId,
-			@RequestBody OrderRequest order) {
+			@Valid @RequestBody OrderRequest order) {
 		orderService.placeOrder(customerId, order);
 		return Response.success();
 	}
 
 	@PostMapping("/cancel")
 	public Response<Void> cancelOrder(@LoginCustomer String customerId,
-			@RequestBody OrderRequest order) {
+			@Valid @RequestBody OrderRequest order) {
 		orderService.cancelOrder(customerId, order);
 		return Response.success();
 	}

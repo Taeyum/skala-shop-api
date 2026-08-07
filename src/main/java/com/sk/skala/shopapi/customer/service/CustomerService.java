@@ -17,7 +17,6 @@ import com.sk.skala.shopapi.global.common.PagedList;
 import com.sk.skala.shopapi.global.exception.Error;
 import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.exception.ResponseException;
-import com.sk.skala.shopapi.global.tools.StringUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -58,12 +57,8 @@ public class CustomerService {
 	}
 
 	public CustomerResponse loginCustomer(CustomerSession customerSession) {
-		// 요청 바디에 값이 들어왔는지 보는 형태 검사다 (도메인 불변식이 아니다).
-		// Phase 2 Bean Validation에서 Controller 계층으로 올라간다
-		if (StringUtil.isAnyEmpty(customerSession.getCustomerId(),
-				customerSession.getCustomerPassword())) {
-			throw new ParameterException("customerId, customerPassword");
-		}
+		// 형태 검사(빈 값 여부)는 Controller의 @Valid + CustomerSession의 @NotBlank가 끝냈다.
+		// 6단계에서 "Phase 2 Bean Validation에서 Controller로 올라간다"고 예고한 항목이다.
 		// findCustomer를 쓰지 않는다. 그러면 없는 ID는 DATA_NOT_FOUND(404), 틀린 비밀번호는
 		// NOT_AUTHENTICATED(401)로 갈려 공격자가 응답만 보고 '유효한 ID 목록'을 만들 수 있다
 		// — 사용자 열거(User Enumeration). 두 경우 모두 401로 통일한다 (DECISIONS.md 9-3절)

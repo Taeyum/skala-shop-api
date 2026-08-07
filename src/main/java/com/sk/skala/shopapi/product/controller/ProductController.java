@@ -16,6 +16,7 @@ import com.sk.skala.shopapi.product.dto.ProductRequest;
 import com.sk.skala.shopapi.product.dto.ProductResponse;
 import com.sk.skala.shopapi.product.service.ProductService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -38,15 +39,16 @@ public class ProductController {
 	}
 
 	@PostMapping
-	public Response<ProductResponse> createProduct(@RequestBody ProductRequest request) {
+	public Response<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
 		return Response.success(productService.createProduct(request));
 	}
 
 	@PutMapping
-	public Response<ProductResponse> updateProduct(@RequestBody ProductRequest request) {
+	public Response<ProductResponse> updateProduct(@Valid @RequestBody ProductRequest request) {
 		return Response.success(productService.updateProduct(request));
 	}
 
+	// 삭제는 id만 보내므로 @Valid를 걸지 않는다 — 걸면 productName·productPrice까지 요구하게 된다
 	@DeleteMapping
 	public Response<Void> deleteProduct(@RequestBody ProductRequest request) {
 		productService.deleteProduct(request);

@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.sk.skala.shopapi.customer.entity.Customer;
 import com.sk.skala.shopapi.customer.service.CustomerService;
 import com.sk.skala.shopapi.global.exception.Error;
-import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.exception.ResponseException;
 import com.sk.skala.shopapi.order.dto.OrderItemDto;
 import com.sk.skala.shopapi.order.dto.OrderListDto;
@@ -66,12 +65,10 @@ public class OrderService {
 
 	@Transactional
 	public void placeOrder(String customerId, OrderRequest order) {
-		validate(order);
-
 		Customer customer = customerService.findCustomer(customerId);
 		Product product = productService.findProduct(order.getProductId());
 
-		// 수량이 음수여도 막지 않는다 — 포인트가 늘어난다. Phase 2에서 @Positive로 차단
+		// 수량 검증은 @Positive(웹 진입)와 엔티티 불변식 두 계층이 막는다 (DECISIONS.md 9-4절)
 		BigDecimal total = product.getProductPrice()
 				.multiply(BigDecimal.valueOf(order.getQuantity()));
 		// 잔액 부족 판단은 Customer가 한다 — 여기서 검증을 잊어도 포인트는 음수가 되지 않는다
@@ -90,8 +87,6 @@ public class OrderService {
 
 	@Transactional
 	public void cancelOrder(String customerId, OrderRequest order) {
-		validate(order);
-
 		Customer customer = customerService.findCustomer(customerId);
 		Product product = productService.findProduct(order.getProductId());
 
@@ -107,12 +102,6 @@ public class OrderService {
 			orderItemRepository.delete(item);
 		} else {
 			orderItemRepository.save(item);
-		}
-	}
-
-	private void validate(OrderRequest order) {
-		if (order.getProductId() == null || order.getQuantity() == null) {
-			throw new ParameterException("productId, quantity");
 		}
 	}
 }

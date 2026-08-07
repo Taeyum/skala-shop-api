@@ -1,12 +1,15 @@
 package com.sk.skala.shopapi.global.exception;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -37,6 +40,25 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Response<Void>> handleParameter(ParameterException e) {
 		log.debug("parameter error: {}", e.getMessage());
 		return ResponseEntity.badRequest().body(Response.fail(e.getMessage()));
+	}
+
+	/**
+	 * Bean Validation 실패 → 400.
+	 * <p>
+	 * 여러 필드가 한꺼번에 걸릴 수 있으나 공통 {@code Response}의 {@code message}는 하나뿐이다.
+	 * 자료의 {@code ParameterException("productName", "productPrice")} 형식을 따라
+	 * <b>필드명을 쉼표로 이어</b> {@code "invalid parameter: productName, productPrice"}로 만든다.
+	 * 필드명을 정렬하는 이유는 검증 순서가 보장되지 않아 같은 요청에 메시지가 달라지는 것을 막기 위해서다.
+	 */
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<Response<Void>> handleValidation(MethodArgumentNotValidException e) {
+		String fields = e.getBindingResult().getFieldErrors().stream()
+				.map(FieldError::getField)
+				.distinct()
+				.sorted()
+				.collect(Collectors.joining(", "));
+		log.debug("validation error: {}", e.getMessage());
+		return ResponseEntity.badRequest().body(Response.fail("invalid parameter: " + fields));
 	}
 
 	/**
