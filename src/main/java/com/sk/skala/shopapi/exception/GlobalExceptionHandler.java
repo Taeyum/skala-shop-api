@@ -19,6 +19,8 @@ public class GlobalExceptionHandler {
 	// 인증 실패도 Error.NOT_AUTHENTICATED를 담은 ResponseException으로 들어온다
 	@ExceptionHandler(ResponseException.class)
 	public Response<Void> handleResponse(ResponseException e) {
+		// 맥락 메시지("Customer not found")는 로그에만. 응답에는 코드만 내보낸다
+		log.debug("business error: {}", e.getMessage());
 		return Response.fail(e.getError().name());
 	}
 

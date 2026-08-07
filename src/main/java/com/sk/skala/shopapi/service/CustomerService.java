@@ -76,7 +76,7 @@ public class CustomerService {
 			throw new ParameterException("customerId, customerPassword");
 		}
 		if (customerRepository.existsById(customer.getCustomerId())) {
-			throw new ResponseException(Error.DATA_DUPLICATED);
+			throw new ResponseException(Error.DATA_DUPLICATED, "Customer already exists");
 		}
 		// 클라이언트가 customerPoint를 실어 보내면 그대로 반영된다 (Mass Assignment) — Phase 2에서 차단
 		if (customer.getCustomerPoint() == null) {
@@ -93,7 +93,7 @@ public class CustomerService {
 		Customer customer = findCustomer(customerSession.getCustomerId());
 		// 평문 비교 — BCrypt 해싱은 Phase 2
 		if (!customer.getCustomerPassword().equals(customerSession.getCustomerPassword())) {
-			throw new ResponseException(Error.NOT_AUTHENTICATED);
+			throw new ResponseException(Error.NOT_AUTHENTICATED, "password mismatch");
 		}
 		sessionHandler.storeAccessToken(customer.getCustomerId());
 
@@ -107,6 +107,10 @@ public class CustomerService {
 
 	// 본인 확인이 없다 — 남의 계정도 고칠 수 있다 (BOLA). Phase 2에서 방어
 	public Response<Customer> updateCustomer(Customer request) {
+		// 자료의 "customerPoint 유효성 체크". 음수 포인트가 그대로 저장되면 잔액 불변식이 깨진다
+		if (request.getCustomerPoint() != null && request.getCustomerPoint() < 0) {
+			throw new ParameterException("customerPoint");
+		}
 		Customer customer = findCustomer(request.getCustomerId());
 		if (request.getCustomerPassword() != null) {
 			customer.setCustomerPassword(request.getCustomerPassword());
@@ -162,7 +166,7 @@ public class CustomerService {
 		Product product = findProduct(order.getProductId());
 
 		OrderItem item = orderItemRepository.findByCustomerAndProduct(customer, product)
-				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND));
+				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "OrderItem not found"));
 		if (item.getQuantity() < order.getQuantity()) {
 			throw new ResponseException(Error.INSUFFICIENT_QUANTITY);
 		}
@@ -193,11 +197,11 @@ public class CustomerService {
 			throw new ParameterException("customerId");
 		}
 		return customerRepository.findById(customerId)
-				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND));
+				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "Customer not found"));
 	}
 
 	private Product findProduct(Long productId) {
 		return productRepository.findById(productId)
-				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND));
+				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "Product not found"));
 	}
 }

@@ -36,7 +36,7 @@ public class ProductService {
 	public Response<Product> createProduct(Product product) {
 		validate(product);
 		if (productRepository.existsByProductName(product.getProductName())) {
-			throw new ResponseException(Error.DATA_DUPLICATED);
+			throw new ResponseException(Error.DATA_DUPLICATED, "Product name already exists");
 		}
 		// 자료는 "신규 Product의 ID를 0L로 세팅"하라고 하지만 따르지 않는다.
 		// Long 래퍼 필드에서 0L은 non-null이라 isNew()가 false가 되어 merge 경로를 타고
@@ -65,7 +65,7 @@ public class ProductService {
 
 	private Product findProduct(Long id) {
 		return productRepository.findById(id)
-				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND));
+				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "Product not found"));
 	}
 
 	/** 상품명이 비어있거나 가격이 0 이하면 거부한다. */

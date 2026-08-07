@@ -36,6 +36,9 @@ server:
 logging:
   level:
     org.hibernate.SQL: debug
+    # ResponseException의 맥락 메시지("Customer not found")는 응답에 싣지 않고 로그로만 남긴다.
+    # 기본 INFO 레벨이면 그 debug 로그가 출력되지 않아 메시지가 어디에도 안 남는다
+    com.sk.skala.shopapi: debug
 
 # HikariCP 풀 크기는 의도적으로 기본값을 쓴다 — 근거 없는 숫자를 넣지 않는다.
 # Phase 3에서 k6 부하 측정 결과와 함께 조정한다 (PLAN.md Phase 3)

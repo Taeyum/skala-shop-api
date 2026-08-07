@@ -54,7 +54,7 @@ public class SessionHandler {
 	public String getCustomerId() {
 		String token = readToken();
 		if (token == null) {
-			throw new ResponseException(Error.NOT_AUTHENTICATED);
+			throw new ResponseException(Error.NOT_AUTHENTICATED, "no access token");
 		}
 		try {
 			return Jwts.parser()
@@ -64,7 +64,7 @@ public class SessionHandler {
 					.getPayload()
 					.getSubject();
 		} catch (JwtException e) {
-			throw new ResponseException(Error.NOT_AUTHENTICATED);
+			throw new ResponseException(Error.NOT_AUTHENTICATED, "invalid access token");
 		}
 	}
 
