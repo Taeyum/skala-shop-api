@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.data.dto;
 
+import java.math.BigDecimal;
+
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -17,6 +19,6 @@ import lombok.Setter;
 public class OrderListDto {
 
 	private String customerId;
-	private Double customerPoint;
+	private BigDecimal customerPoint;
 	private List<OrderItemDto> products;
 }

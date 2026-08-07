@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.data.table;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,6 +29,6 @@ public class Customer {
 	@Column(nullable = false)
 	private String customerPassword;
 
-	@Column(nullable = false)
-	private Double customerPoint;
+	@Column(nullable = false, precision = 19, scale = 2)
+	private BigDecimal customerPoint;
 }

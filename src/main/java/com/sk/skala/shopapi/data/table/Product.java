@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.data.table;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -23,6 +25,7 @@ public class Product {
 	@Column(nullable = false, unique = true)
 	private String productName;
 
-	@Column(nullable = false)
-	private Double productPrice;
+	// 금액은 BigDecimal. double은 십진 소수를 정확히 표현하지 못한다 (DECISIONS.md 3절)
+	@Column(nullable = false, precision = 19, scale = 2)
+	private BigDecimal productPrice;
 }

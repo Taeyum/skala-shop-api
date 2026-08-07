@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,8 +34,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CustomerService {
 
-	/** 가입 시 부여하는 초기 포인트 (SPEC.md 5절). */
-	private static final double INITIAL_POINT = 1_000_000;
+	/** 가입 시 부여하는 초기 포인트 (SPEC.md 5절). 문자열 생성자 — new BigDecimal(double)은 오차가 들어온다 */
+	private static final BigDecimal INITIAL_POINT = new BigDecimal("1000000.00");
 
 	private final CustomerRepository customerRepository;
 	// 다른 도메인의 Repository를 직접 참조한다 — Phase 1에서 Service 경유로 바꾼다
@@ -111,7 +113,8 @@ public class CustomerService {
 		// 둘 다 DATA_NOT_FOUND로 적었다. 검증 실패에 "데이터를 찾을 수 없음"은 의미가 맞지 않지만,
 		// 그 부정확함 자체가 Phase 2 "Error → HTTP 매핑"의 개선 대상이므로 기준점에서는 자료를 따른다.
 		// 지금 고치면 Phase 2가 매핑만 붙이는 작업이 되고 개선 전/후가 사라진다 (DECISIONS.md 10절)
-		if (request.getCustomerPoint() != null && request.getCustomerPoint() < 0) {
+		if (request.getCustomerPoint() != null
+				&& request.getCustomerPoint().compareTo(BigDecimal.ZERO) < 0) {
 			throw new ResponseException(Error.DATA_NOT_FOUND, "invalid customerPoint");
 		}
 		Customer customer = findCustomer(request.getCustomerId());
@@ -139,11 +142,12 @@ public class CustomerService {
 		Product product = findProduct(order.getProductId());
 
 		// 수량이 음수여도 막지 않는다 — 포인트가 늘어난다. Phase 2에서 @Positive로 차단
-		double total = product.getProductPrice() * order.getQuantity();
-		if (customer.getCustomerPoint() < total) {
+		BigDecimal total = product.getProductPrice()
+				.multiply(BigDecimal.valueOf(order.getQuantity()));
+		if (customer.getCustomerPoint().compareTo(total) < 0) {
 			throw new ResponseException(Error.INSUFFICIENT_FUNDS);
 		}
-		customer.setCustomerPoint(customer.getCustomerPoint() - total);
+		customer.setCustomerPoint(customer.getCustomerPoint().subtract(total));
 
 		OrderItem item = orderItemRepository.findByCustomerAndProduct(customer, product)
 				.orElse(null);
@@ -152,18 +156,12 @@ public class CustomerService {
 			item.setCustomer(customer);
 			item.setProduct(product);
 			item.setQuantity(order.getQuantity());
-			item.setOrderedPrice(product.getProductPrice());
+			item.setOrderedAmount(total);
 		} else {
 			// 재주문은 신규 행이 아니라 수량 누적 — (customer_id, product_id) 복합 UNIQUE가 강제한다.
-			// 한 행에 단가가 하나뿐이라, 가격이 바뀐 뒤 재주문하면 어느 값을 남길지 정해야 한다.
-			// 가중평균을 쓴다 — 전량 취소 시 환불 총액이 결제 총액과 일치하는 유일한 선택이다.
-			//   최초가 유지  : 가격 하락 후 재주문하면 과다 환불
-			//   현재가 덮어쓰기: 가격 상승 후 재주문하면 과다 환불 (지금 고치는 결함과 같은 형태)
-			int totalQuantity = item.getQuantity() + order.getQuantity();
-			double totalPaid = item.getOrderedPrice() * item.getQuantity()
-					+ product.getProductPrice() * order.getQuantity();
-			item.setOrderedPrice(totalPaid / totalQuantity);
-			item.setQuantity(totalQuantity);
+			// 총액을 저장하므로 결제액을 더하기만 하면 된다. 나눗셈이 없어 오차가 생길 여지도 없다
+			item.setQuantity(item.getQuantity() + order.getQuantity());
+			item.setOrderedAmount(item.getOrderedAmount().add(total));
 		}
 		orderItemRepository.save(item);
 		return Response.success();
@@ -183,17 +181,30 @@ public class CustomerService {
 			throw new ResponseException(Error.INSUFFICIENT_QUANTITY);
 		}
 
-		// 주문 시점 단가로 환불한다. 현재가를 쓰면 가격 상승 후 취소할 때 원금을 초과한다
+		// 현재가가 아니라 결제 총액에서 환불한다. 현재가를 쓰면 가격 상승 후 취소할 때 원금을 초과한다
 		// (실측: 15,000짜리 2개 주문 후 50,000으로 인상하고 1개 취소 → 잔액이 원금보다 20,000 많았다).
-		// 근거와 개선 전/후 수치는 DECISIONS.md 2절
-		double refund = item.getOrderedPrice() * order.getQuantity();
-		customer.setCustomerPoint(customer.getCustomerPoint() + refund);
-
+		// 근거는 DECISIONS.md 2절
 		int remain = item.getQuantity() - order.getQuantity();
+		BigDecimal refund;
+		if (remain == 0) {
+			// 전량 취소는 잔액 전부. 나눗셈이 없으니 반올림이 개입할 여지도 없다
+			refund = item.getOrderedAmount();
+		} else {
+			// 곱한 뒤 나눈다 — 반올림을 1회로 줄인다.
+			// DOWN이라 개별 환불이 정확한 몫을 넘지 않는다 (검증: DECISIONS.md 3절)
+			refund = item.getOrderedAmount()
+					.multiply(BigDecimal.valueOf(order.getQuantity()))
+					.divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.DOWN);
+		}
+		customer.setCustomerPoint(customer.getCustomerPoint().add(refund));
+
 		if (remain == 0) {
 			orderItemRepository.delete(item);
 		} else {
 			item.setQuantity(remain);
+			// 남은 총액은 재계산이 아니라 차감이다. 재계산하면 반올림이 매번 새로 일어나 누적되지만,
+			// 차감하면 잔여가 잔액에 남아 다음 취소로 이월돼 환불 합계가 결제 총액과 정확히 일치한다
+			item.setOrderedAmount(item.getOrderedAmount().subtract(refund));
 			orderItemRepository.save(item);
 		}
 		return Response.success();

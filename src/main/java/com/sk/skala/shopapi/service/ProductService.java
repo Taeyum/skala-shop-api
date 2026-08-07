@@ -1,5 +1,7 @@
 package com.sk.skala.shopapi.service;
 
+import java.math.BigDecimal;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -70,9 +72,10 @@ public class ProductService {
 
 	/** 상품명이 비어있거나 가격이 0 이하면 거부한다. */
 	private void validate(Product product) {
+		// BigDecimal 비교는 compareTo — equals는 scale까지 보므로 0 != 0.00이 된다
 		if (StringUtil.isAnyEmpty(product.getProductName())
 				|| product.getProductPrice() == null
-				|| product.getProductPrice() <= 0) {
+				|| product.getProductPrice().compareTo(BigDecimal.ZERO) <= 0) {
 			throw new ParameterException("productName, productPrice");
 		}
 	}
