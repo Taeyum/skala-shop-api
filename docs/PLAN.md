@@ -100,18 +100,31 @@
 
 ## Phase 4 — 테스트
 
-- [ ] 도메인 단위 테스트 (순수 JUnit, Spring 없이)
-- [ ] Service 유닛 테스트 (Mockito)
-- [ ] `@DataJpaTest` Repository 쿼리 검증 — **Testcontainers PostgreSQL 기반**
-      (`@ServiceConnection` + `.withReuse(true)`. 임베디드 DB로 대체하면 방언 차이를 못 잡는다)
-- [ ] `@WebMvcTest` Controller 검증
-- [ ] `@SpringBootTest` + MockMvc E2E 1개
-- [ ] **동시성 테스트** — `ExecutorService` + `CountDownLatch`, 100건 동시 주문 포인트 정합성
-      ⚠️ 테스트 메서드에 `@Transactional` 금지 (스레드가 트랜잭션 공유 못 함)
+- [x] 도메인 단위 테스트 (순수 JUnit, Spring 없이) — 32건, 0.27초. 변이 9건 전부 잡힘
+- [x] Service 유닛 테스트 (Mockito) — 23건
+- [x] `@DataJpaTest` Repository 쿼리 검증 — **Testcontainers PostgreSQL 기반** — 10건
+      (`replace = NONE`이 필요하다. `.withReuse(true)`는 **실측 결과 효과가 없었다** — `DECISIONS.md` 17절)
+- [x] `@WebMvcTest` Controller 검증 — 20건.
+      슬라이스가 `HandlerMethodArgumentResolver`·`@ControllerAdvice`를 자동 포함한다
+- [x] `@SpringBootTest` + MockMvc E2E — `ShopScenarioTest` 7건 (SPEC 5절 6단계 + 미인증 401)
+- [x] **동시성 테스트** — `ExecutorService` + `CountDownLatch`, 100건 동시 주문 포인트 정합성
+      *(Phase 3에서 선수행 — `ConcurrentOrderTest`)*
 - [x] 낙관적 락 vs 비관적 락 비교 실험 → 처리량·실패율 표 *(Phase 3에서 선수행 — `docs/evidence/lock-comparison.md`)*
-- [ ] 트랜잭션 롤백 시나리오 테스트
-- [ ] ArchUnit — 계층·도메인 경계, setter 금지 강제
-- [ ] JaCoCo + 커버리지 게이트 (DTO/엔티티 제외, 제외 사유 주석)
+- [x] 트랜잭션 롤백 시나리오 — 잔액 부족 시 주문 미저장, 취소 실패 시 수량 불변
+- [x] ArchUnit — 규칙 12개. **순환 참조 실제 위반을 찾아 해소했다.** 변이 10건 전부 잡힘
+- [x] JaCoCo + 커버리지 게이트 (라인 85% / 분기 80%, 실측 89.4% / 87.2%)
+      제외 사유는 `build.gradle` 주석과 `DECISIONS.md` 16절. Lombok 생성분은 `lombok.config`로 제외
+- [x] 인증 테스트 — `SessionHandlerTest` 8건 *(계획에 없던 항목. 아래 참조)*
+
+> **Phase 4에서 나온 것** — 커버리지 **93%** 인 `SessionHandler`에 **위조 토큰을 받아들이는 회귀가
+> 테스트 104건을 모두 통과했다.** 커버리지는 "실행됐다"만 말하고 "옳은지 확인됐다"고는 말하지 않는다.
+> 예고해둔 함정(`JOURNAL` Phase 4)이 실제로 발동한 것이며, 이 항목은 계획에 없다가 그래서 추가됐다.
+>
+> ArchUnit은 첫 실행에서 `customer ↔ order` **패키지 순환**을 찾았다 — `DECISIONS.md` 4절은
+> 단방향이라고 적고 있었고 사람은 세 Phase 동안 못 봤다.
+>
+> 모든 테스트를 역검증했다 (도메인 9 · 계층 12 · 아키텍처 10 · 게이트 1 = 32건).
+> 상세는 `DECISIONS.md` 15~17절.
 
 ## Phase 5 — 운영 · 배포
 
