@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.tools.StringUtil;
 
+import com.sk.skala.shopapi.global.common.BaseTimeEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -19,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "products")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 전용, 외부 생성 차단
-public class Product {
+public class Product extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.sk.skala.shopapi.customer.entity.Customer;
+import com.sk.skala.shopapi.global.config.JpaAuditingConfig;
 import com.sk.skala.shopapi.support.PostgresTestContainer;
 
 import jakarta.persistence.EntityManager;
@@ -21,7 +22,9 @@ import jakarta.persistence.EntityManager;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import(PostgresTestContainer.class)
+// JpaAuditingConfig를 함께 담는다 — @DataJpaTest 슬라이스는 @EnableJpaAuditing을
+// 자동으로 포함하지 않아, 없으면 created_at이 null인 채 저장되어 NOT NULL 제약에 걸린다
+@Import({ PostgresTestContainer.class, JpaAuditingConfig.class })
 class CustomerRepositoryTest {
 
 	@Autowired private CustomerRepository customerRepository;

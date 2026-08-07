@@ -11,6 +11,8 @@ import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.exception.ResponseException;
 import com.sk.skala.shopapi.global.tools.StringUtil;
 
+import com.sk.skala.shopapi.global.common.BaseTimeEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -26,7 +28,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "customers")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 전용, 외부 생성 차단
-public class Customer {
+public class Customer extends BaseTimeEntity {
 
 	// 대리키 — 비즈니스 의미가 없어 도메인 규칙이 바뀌어도 영향받지 않는다 (DECISIONS.md 1절)
 	@Id

@@ -9,6 +9,8 @@ import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.exception.ResponseException;
 import com.sk.skala.shopapi.product.entity.Product;
 
+import com.sk.skala.shopapi.global.common.BaseTimeEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -31,7 +33,7 @@ import lombok.NoArgsConstructor;
 				columnNames = {"customer_id", "product_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 전용, 외부 생성 차단
-public class OrderItem {
+public class OrderItem extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
