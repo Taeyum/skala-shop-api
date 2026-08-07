@@ -47,8 +47,9 @@ public class OrderService {
 		Customer customer = customerService.findCustomer(customerId);
 
 		List<OrderItemDto> products = new ArrayList<>();
+		// findByCustomer에 @EntityGraph(product)가 걸려 있어 아래 getProduct()는 추가 쿼리를 내지 않는다.
+		// 없던 시절엔 상품 종수만큼 SELECT가 더 나갔다 (20종 → 22개, docs/evidence/n-plus-1.md)
 		for (OrderItem item : orderItemRepository.findByCustomer(customer)) {
-			// item.getProduct()마다 SELECT가 나간다 (N+1) — Phase 3에서 fetch join으로 개선
 			Product product = item.getProduct();
 			products.add(OrderItemDto.builder()
 					.productId(product.getId())
