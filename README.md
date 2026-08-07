@@ -49,6 +49,7 @@ docker compose up -d postgres
 | `DB_PASSWORD` | `shoppw` | DB 비밀번호 (`docker` 프로파일에서는 필수) |
 | `SERVER_PORT` | `8080` | 애플리케이션 포트 |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_PORT` | `shopdb` / `shop` / `shoppw` / `5433` | compose의 postgres 서비스 설정 |
+| `JWT_SECRET` | `dev-only-do-not-use-in-production-...` | JWT 서명 키. **운영에서는 반드시 교체** |
 
 > **DB 포트가 5433인 이유** — 개발 머신에 이미 PostgreSQL이 5432를 쓰고 있으면,
 > Docker는 와일드카드 바인딩에 성공해버려서 충돌 에러 없이 `localhost:5432`가 기존 로컬 DB로 간다.
@@ -77,6 +78,23 @@ POSTGRES_PORT=15432 ./gradlew bootRun
 ```
 
 기본값은 **개발 전용**이다. 실제 크리덴셜은 저장소에 두지 않고 환경변수나 `.env`로 주입한다 (`.env`는 gitignore 대상).
+
+> **`JWT_SECRET`의 기본값은 애플리케이션이 아니라 `docker-compose.yml`이 준다.**
+> 애플리케이션의 `docker` 프로파일은 `${JWT_SECRET}`을 **필수**로 요구하며, 없으면 기동이 실패한다.
+> 개발 편의(기본값 제공)는 실행 환경이 책임지고, 애플리케이션은 "시크릿 없이는 뜨지 않는다"는
+> 계약을 지킨다. 덕분에 `docker compose up` 한 줄 실행은 유지되면서도, 컨테이너 밖에서
+> 직접 배포할 때는 시크릿을 빠뜨릴 수 없다.
+>
+> 키 길이가 서명 알고리즘을 결정한다 — 32바이트 이상 HS256, 48 이상 HS384, 64 이상 HS512.
+> **32바이트 미만이면 기동 시 `WeakKeyException`으로 실패한다.**
+
+`.env`로 교체하려면:
+
+```bash
+cp .env.example .env
+# .env의 JWT_SECRET을 32바이트 이상의 임의 문자열로 교체
+docker compose up
+```
 
 ## 테스트
 

@@ -14,6 +14,7 @@ import com.sk.skala.shopapi.global.exception.ResponseException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,6 +42,23 @@ public class SessionHandler {
 	@Value("${jwt.expiration-ms}")
 	private long expirationMs;
 
+	private SecretKey key;
+
+	/**
+	 * 키를 기동 시점에 한 번 만든다.
+	 * <p>
+	 * 매 요청마다 만들던 때는 시크릿이 너무 짧아도 <b>앱이 정상적으로 떴다.</b>
+	 * {@code WeakKeyException}은 첫 로그인에서야 터졌고, 그것도 500 "internal server error"로
+	 * 나가 원인이 보이지 않았다. 설정 오류가 런타임까지 숨어 있는 셈이다.
+	 * 여기서 만들면 잘못된 시크릿으로는 <b>기동 자체가 실패한다</b> (DECISIONS.md 7절 —
+	 * 실패하려면 시끄럽게 실패해야 한다).
+	 */
+	@PostConstruct
+	void initKey() {
+		// HS256은 최소 256비트(32바이트)를 요구한다. 짧으면 여기서 WeakKeyException
+		this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+	}
+
 	/** 액세스 토큰을 발급해 응답 쿠키에 실는다. */
 	public void storeAccessToken(String customerId) {
 		Cookie cookie = new Cookie(COOKIE_NAME, createToken(customerId));
@@ -58,7 +76,7 @@ public class SessionHandler {
 		}
 		try {
 			return Jwts.parser()
-					.verifyWith(key())
+					.verifyWith(key)
 					.build()
 					.parseSignedClaims(token)
 					.getPayload()
@@ -74,7 +92,7 @@ public class SessionHandler {
 				.subject(customerId)
 				.issuedAt(now)
 				.expiration(new Date(now.getTime() + expirationMs))
-				.signWith(key())
+				.signWith(key)
 				.compact();
 	}
 
@@ -91,7 +109,4 @@ public class SessionHandler {
 		return null;
 	}
 
-	private SecretKey key() {
-		return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-	}
 }

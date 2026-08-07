@@ -7,3 +7,8 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+
+# 기본값을 두지 않는다 — 시크릿이 빠지면 조용히 약한 키로 뜨는 대신 기동이 실패해야 한다.
+# 개발 편의(기본값 제공)는 애플리케이션이 아니라 docker-compose.yml이 책임진다
+jwt:
+  secret: ${JWT_SECRET}

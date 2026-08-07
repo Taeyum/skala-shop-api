@@ -35,6 +35,9 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shopdb}
       DB_USERNAME: ${POSTGRES_USER:-shop}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-shoppw}
+      # 애플리케이션은 "시크릿 없으면 못 뜬다"는 계약을 지키고,
+      # 개발 편의는 실행 환경(여기)이 책임진다 — docker compose up 한 줄 실행이 유지된다
+      JWT_SECRET: ${JWT_SECRET:-dev-only-do-not-use-in-production-0123456789}
     ports:
       - "${SERVER_PORT:-8080}:8080"
 
