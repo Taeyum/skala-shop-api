@@ -57,15 +57,18 @@
 
 ## Phase 2 — 보안 · 검증
 
-- [ ] BCrypt 비밀번호 해싱 (`spring-security-crypto`)
+> **순서** — 자격증명(A)을 먼저, 설계 결함(B)을 나중에. BCrypt는 저장 형식이 바뀌어 다른 작업과 섞으면
+> 디버깅이 어렵다. 각 단계마다 E2E를 돌리고 커밋했다.
+
+- [x] BCrypt 비밀번호 해싱 (`spring-security-crypto`) *(A-1)*
 - [x] ~~Mass Assignment 차단 — 가입 시 포인트 서버 고정~~ **Phase 1 4단계에서 해소** (`CustomerRequest`에 필드 없음)
-- [ ] 비밀번호 전 구간 차단 — 응답 DTO는 Phase 1 4단계에서 완료. **남은 것은 `@JsonIgnore` 이중 방어**
-- [ ] BOLA 방어 — 본인 리소스만 수정/삭제 (403)
-- [ ] Bean Validation (`@NotBlank`, `@Positive`, `@Valid`)
-- [ ] Error → HTTP 상태 매핑
-- [ ] JWT 하드닝 — 환경변수 시크릿, 만료시간, HttpOnly/Secure/SameSite
-- [ ] 500 유출 차단 — 스택트레이스는 로그만, 응답엔 traceId
-- [ ] 삭제 시 참조 무결성 정책 결정 및 적용
+- [x] 비밀번호 전 구간 차단 — 응답 DTO(Phase 1 4단계) + `@JsonIgnore` 이중 방어 *(B-4)*
+- [x] BOLA 방어 — 본인 리소스만 수정/삭제/조회 (403 `NOT_OWNER`) *(B-3)*
+- [x] Bean Validation (`@NotBlank`, `@Positive`, `@Valid`) *(B-2)*
+- [x] Error → HTTP 상태 매핑 *(B-1)*
+- [x] JWT 하드닝 — 환경변수 시크릿, 만료시간 근거, HttpOnly/Secure/SameSite *(A-2·A-3)*
+- [x] 500 유출 차단 — 스택트레이스는 로그만, 응답엔 traceId *(B-1)*
+- [x] 삭제 시 참조 무결성 정책 결정 및 적용 — 거부(`DATA_IN_USE` 409) *(B-5)*
 
 ## Phase 3 — 동시성 · 성능
 

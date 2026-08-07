@@ -2,6 +2,7 @@ package com.sk.skala.shopapi.customer.service;
 
 import java.math.BigDecimal;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -91,10 +92,23 @@ public class CustomerService {
 		return CustomerResponse.from(customerRepository.save(customer));
 	}
 
+	/**
+	 * 탈퇴. <b>보유 중인 상품이 있으면 거부한다.</b>
+	 * <p>
+	 * 주문을 함께 지우는 방식도 검토했으나, 이 구조에서는 고객에게 손해다 —
+	 * {@code OrderItem}은 "주문 이력"이 아니라 "현재 보유 수량"이고, 취소해야 포인트가 환불된다.
+	 * 자동 삭제하면 <b>환불 없이 보유 상품만 사라진다.</b> 먼저 취소하게 하면 포인트를 돌려받고 나간다.
+	 * (구현상으로도 customer → order 의존이 필요해 순환이 된다 — DECISIONS.md 9-6절)
+	 */
 	public void deleteCustomer(String loginCustomerId, CustomerRequest request) {
 		requireOwner(loginCustomerId, request.getCustomerId());
-		// 주문 내역이 남아 있으면 FK 제약에 걸린다 — 참조 무결성 정책은 B-5에서 정한다
-		customerRepository.delete(findCustomer(request.getCustomerId()));
+		Customer customer = findCustomer(request.getCustomerId());
+		try {
+			customerRepository.delete(customer);
+			customerRepository.flush();
+		} catch (DataIntegrityViolationException e) {
+			throw new ResponseException(Error.DATA_IN_USE, "customer still holds ordered products");
+		}
 	}
 
 	/**

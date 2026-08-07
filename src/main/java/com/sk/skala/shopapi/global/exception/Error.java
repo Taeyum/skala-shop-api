@@ -18,6 +18,15 @@ public enum Error {
 	DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "data not found"),
 	DATA_DUPLICATED(HttpStatus.CONFLICT, "data duplicated"),
 
+	/**
+	 * 다른 데이터가 참조하고 있어 삭제할 수 없다. 409
+	 * <p>
+	 * 요청 자체는 올바르고 <b>현재 상태와 충돌</b>하는 경우라 409다.
+	 * ({@code INSUFFICIENT_*}는 SPEC 4절이 400으로 명시해 계약을 따랐지만,
+	 * 이 코드는 자료에 없어 상태 충돌 의미대로 정할 수 있었다 — 9-6절)
+	 */
+	DATA_IN_USE(HttpStatus.CONFLICT, "data is referenced by other records"),
+
 	// SPEC 4절이 400으로 명시한다. 상태 충돌로 보면 409도 근거가 있으나 계약을 따른다
 	// (검토 경위는 DECISIONS.md 9-3절)
 	INSUFFICIENT_FUNDS(HttpStatus.BAD_REQUEST, "insufficient funds"),

@@ -2,6 +2,8 @@ package com.sk.skala.shopapi.customer.entity;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.sk.skala.shopapi.global.exception.Error;
@@ -34,6 +36,13 @@ public class Customer {
 	@Column(nullable = false, unique = true)
 	private String customerId;
 
+	/**
+	 * 응답 DTO에 비밀번호 필드가 없으므로 정상 경로로는 노출되지 않는다.
+	 * {@code @JsonIgnore}는 <b>엔티티가 실수로 직렬화되는 경로</b>를 막는 두 번째 방어다 —
+	 * 누군가 Controller에서 엔티티를 그대로 반환하거나, 디버깅용으로 로그에 JSON을 찍을 때.
+	 * 한 겹이 뚫려도 다른 겹이 남아야 방어다.
+	 */
+	@JsonIgnore
 	@Column(nullable = false)
 	private String customerPassword;
 
