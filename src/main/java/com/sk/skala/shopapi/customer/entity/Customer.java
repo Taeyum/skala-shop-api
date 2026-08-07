@@ -2,6 +2,8 @@ package com.sk.skala.shopapi.customer.entity;
 
 import java.math.BigDecimal;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import com.sk.skala.shopapi.global.exception.Error;
 import com.sk.skala.shopapi.global.exception.ParameterException;
 import com.sk.skala.shopapi.global.exception.ResponseException;
@@ -38,20 +40,25 @@ public class Customer {
 	@Column(nullable = false, precision = 19, scale = 2)
 	private BigDecimal customerPoint;
 
-	public static Customer register(String customerId, String customerPassword, BigDecimal initialPoint) {
-		if (StringUtil.isAnyEmpty(customerId, customerPassword)) {
+	/** {@code encodedPassword}는 이미 해싱된 값이어야 한다. 해싱은 호출 전에 끝낸다. */
+	public static Customer register(String customerId, String encodedPassword, BigDecimal initialPoint) {
+		if (StringUtil.isAnyEmpty(customerId, encodedPassword)) {
 			throw new ParameterException("customerId, customerPassword");
 		}
 		Customer customer = new Customer();
 		customer.customerId = customerId;
-		customer.customerPassword = customerPassword;
+		customer.customerPassword = encodedPassword;
 		customer.customerPoint = initialPoint;
 		return customer;
 	}
 
-	/** 비밀번호 비교를 밖으로 내보내지 않는다. Phase 2에서 BCrypt로 바꿔도 호출부는 그대로다. */
-	public boolean matchesPassword(String rawPassword) {
-		return customerPassword.equals(rawPassword);
+	/**
+	 * 비밀번호 일치 판단은 Customer가 한다. 다만 <b>어떤 알고리즘으로</b> 비교하는지는
+	 * 엔티티가 알 일이 아니라 인코더에 위임한다 — 엔티티가 스프링 빈을 직접 물면 안 되므로
+	 * 인자로 받는다. 알고리즘이 바뀌어도 이 메서드의 의미는 그대로다.
+	 */
+	public boolean matchesPassword(String rawPassword, PasswordEncoder passwordEncoder) {
+		return passwordEncoder.matches(rawPassword, this.customerPassword);
 	}
 
 	/**
@@ -69,11 +76,12 @@ public class Customer {
 		this.customerPoint = this.customerPoint.add(amount);
 	}
 
-	public void changePassword(String customerPassword) {
-		if (StringUtil.isAnyEmpty(customerPassword)) {
+	/** {@code encodedPassword}는 이미 해싱된 값이어야 한다. */
+	public void changePassword(String encodedPassword) {
+		if (StringUtil.isAnyEmpty(encodedPassword)) {
 			throw new ParameterException("customerPassword");
 		}
-		this.customerPassword = customerPassword;
+		this.customerPassword = encodedPassword;
 	}
 
 	public void changePoint(BigDecimal customerPoint) {

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.sk.skala.shopapi.customer.dto.CustomerRequest;
@@ -32,6 +33,7 @@ public class CustomerService {
 	private static final BigDecimal INITIAL_POINT = new BigDecimal("1000000.00");
 
 	private final CustomerRepository customerRepository;
+	private final PasswordEncoder passwordEncoder;
 
 	public PagedList<CustomerResponse> getAllCustomers(int offset, int count) {
 		Page<Customer> page = customerRepository.findAll(PageRequest.of(offset, count));
@@ -43,8 +45,12 @@ public class CustomerService {
 	public CustomerResponse createCustomer(CustomerRequest request) {
 		// 입력 검증은 register가 한다. 초기 포인트는 서버가 정하며, CustomerRequest에
 		// customerPoint 필드가 없으므로 클라이언트는 지정할 방법 자체가 없다 (Mass Assignment 구조적 차단)
+		// 평문은 여기서 끝난다 — 엔티티에는 해시만 넘어간다
+		String encodedPassword = request.getCustomerPassword() == null
+				? null
+				: passwordEncoder.encode(request.getCustomerPassword());
 		Customer customer = Customer.register(
-				request.getCustomerId(), request.getCustomerPassword(), INITIAL_POINT);
+				request.getCustomerId(), encodedPassword, INITIAL_POINT);
 		if (customerRepository.existsByCustomerId(customer.getCustomerId())) {
 			throw new ResponseException(Error.DATA_DUPLICATED, "Customer already exists");
 		}
@@ -59,8 +65,9 @@ public class CustomerService {
 			throw new ParameterException("customerId, customerPassword");
 		}
 		Customer customer = findCustomer(customerSession.getCustomerId());
-		// 비교 방식은 Customer가 안다 — Phase 2에서 BCrypt로 바꿔도 이 호출부는 그대로다
-		if (!customer.matchesPassword(customerSession.getCustomerPassword())) {
+		// 일치 판단은 Customer가 한다. BCrypt로 바꾸며 인코더 인자가 하나 늘었을 뿐,
+		// '무엇이 일치인가'를 Service가 아는 구조로 돌아가지는 않았다
+		if (!customer.matchesPassword(customerSession.getCustomerPassword(), passwordEncoder)) {
 			throw new ResponseException(Error.NOT_AUTHENTICATED, "password mismatch");
 		}
 		// 토큰 발급·쿠키 적재는 웹 관심사라 Controller가 맡는다.
@@ -73,7 +80,7 @@ public class CustomerService {
 		Customer customer = findCustomer(request.getCustomerId());
 		// 각 값의 유효성은 Customer가 판단한다 (음수 포인트 거부 등)
 		if (request.getCustomerPassword() != null) {
-			customer.changePassword(request.getCustomerPassword());
+			customer.changePassword(passwordEncoder.encode(request.getCustomerPassword()));
 		}
 		if (request.getCustomerPoint() != null) {
 			customer.changePoint(request.getCustomerPoint());

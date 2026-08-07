@@ -29,6 +29,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // Spring Security 전체가 아니라 암호화 모듈만 — 필터 체인·인증 인프라는 쓰지 않는다
+    implementation 'org.springframework.security:spring-security-crypto'
+
     // jjwt 0.12.x는 api/impl/jackson 3분할 — 구현체는 런타임에만 필요해 컴파일 의존성 오염을 막는다
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
