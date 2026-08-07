@@ -39,6 +39,9 @@ dependencies {
     // API 로깅 AOP. 프록시 기반이라 자기 호출(self-invocation)에는 걸리지 않는다
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
+    // health/readiness/liveness. 노출은 최소화한다 (DECISIONS.md 21절)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
     // jjwt 0.12.x는 api/impl/jackson 3분할 — 구현체는 런타임에만 필요해 컴파일 의존성 오염을 막는다
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
