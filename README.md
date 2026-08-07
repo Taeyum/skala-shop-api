@@ -50,6 +50,7 @@ docker compose up -d postgres
 | `SERVER_PORT` | `8080` | 애플리케이션 포트 |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_PORT` | `shopdb` / `shop` / `shoppw` / `5433` | compose의 postgres 서비스 설정 |
 | `JWT_SECRET` | `dev-only-do-not-use-in-production-...` | JWT 서명 키. **운영에서는 반드시 교체** |
+| `COOKIE_SECURE` | `false` | 인증 쿠키의 `Secure` 플래그. **HTTPS 뒤에 배포하면 `true`** |
 
 > **DB 포트가 5433인 이유** — 개발 머신에 이미 PostgreSQL이 5432를 쓰고 있으면,
 > Docker는 와일드카드 바인딩에 성공해버려서 충돌 에러 없이 `localhost:5432`가 기존 로컬 DB로 간다.
@@ -87,6 +88,11 @@ POSTGRES_PORT=15432 ./gradlew bootRun
 >
 > 키 길이가 서명 알고리즘을 결정한다 — 32바이트 이상 HS256, 48 이상 HS384, 64 이상 HS512.
 > **32바이트 미만이면 기동 시 `WeakKeyException`으로 실패한다.**
+
+> **인증 쿠키는 `HttpOnly` + `SameSite=Strict` + `Path=/`로 발급된다.**
+> `Secure`는 기본 `false`다 — 이 스택은 HTTP로 서비스하므로 켜면 브라우저·Postman이 쿠키를
+> 보내지 않아 로그인이 동작하지 않는다. **TLS 종단 뒤에 배포하면 `COOKIE_SECURE=true`로 켠다.**
+> 현재 정책은 기동 로그 첫머리에 그대로 출력된다.
 
 `.env`로 교체하려면:
 

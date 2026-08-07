@@ -28,8 +28,22 @@ jwt:
   # secret은 여기 두지 않는다 — 프로파일별로 정의한다.
   #   docker : ${JWT_SECRET} 필수. 없으면 기동 실패 (fail-fast)
   #   local  : 개발 전용 기본값 허용
-  # 만료 시간은 비밀이 아니므로 공통에 둔다
+  # 만료 시간은 비밀이 아니므로 공통에 둔다.
+  # 1시간 — 학습 프로젝트 기준값이다. 리프레시 토큰이 없어 만료되면 재로그인해야 하므로
+  # 너무 짧으면 쓰기 불편하고, 길면 탈취 시 노출 창이 커진다. 그 절충점이다.
+  # 실무라면 액세스 토큰을 5~15분으로 짧게 두고 리프레시 토큰을 분리한다 (DECISIONS.md 9-2절)
   expiration-ms: 3600000
+
+  cookie:
+    # Strict — 이 API에서 인증이 필요한 요청은 전부 POST(/order·/cancel)와 PUT·DELETE다.
+    # 외부 링크를 타고 들어오는 GET에 쿠키가 실릴 필요가 없으므로 Lax로 완화할 이유가 없다
+    same-site: Strict
+
+    # Secure는 프로파일이 아니라 '전송 계층이 HTTPS인가'가 결정하므로 프로파일로 나누지 않는다.
+    # local도 docker도 현재 HTTP로 서비스하며, 여기서 true로 켜면 브라우저·Postman이
+    # 쿠키를 아예 보내지 않아 로그인이 동작하지 않는다.
+    # TLS 종단(리버스 프록시 등) 뒤에 두는 순간 COOKIE_SECURE=true로 켠다 (DECISIONS.md 9-2절)
+    secure: ${COOKIE_SECURE:false}
 
 server:
   port: ${SERVER_PORT:8080}
