@@ -72,16 +72,19 @@
 
 ## Phase 3 — 동시성 · 성능
 
-- [ ] `open-in-view: false` + SQL 로그 설정
-- [ ] N+1 해결 — `@EntityGraph` 또는 fetch join
-- [ ] **개선 전/후 SQL 로그 캡처** → `docs/evidence/`
-- [ ] 쿼리 카운트 테스트 (Hibernate Statistics)
-- [ ] `@Version` 낙관적 락
-- [ ] 락 충돌 후처리 — 409 응답 또는 `@Retryable`
-- [ ] `@Cacheable` + `@CacheEvict` 상품 조회 캐싱
-- [ ] HTTP 캐시 헤더 (`Cache-Control`, `ETag`)
-- [ ] HikariCP · Tomcat 스레드풀 튜닝 (**측정 후 근거와 함께**)
+- [x] `open-in-view: false` + SQL 로그 설정
+- [x] N+1 해결 — `@EntityGraph` (22 → 2 쿼리)
+- [x] **개선 전/후 SQL 로그 캡처** → `docs/evidence/n-plus-1.md`
+- [x] 쿼리 카운트 테스트 (Hibernate Statistics) — `OrderQueryCountTest`, 역검증 완료
+- [x] `@Version` 낙관적 락 — Lost Update 88건 증발을 먼저 실측 (`docs/evidence/lost-update.md`)
+- [x] 락 충돌 후처리 — 409 `CONCURRENT_MODIFICATION`. `@Retryable`은 넣지 않았다 (`DECISIONS.md` 14절)
+- [ ] ~~`@Cacheable` + `@CacheEvict` 상품 조회 캐싱~~ **Phase 6으로 보류**
+- [ ] ~~HTTP 캐시 헤더 (`Cache-Control`, `ETag`)~~ **Phase 6으로 보류**
+- [ ] ~~HikariCP · Tomcat 스레드풀 튜닝~~ **Phase 6으로 보류** — k6 없이 정하면 근거 없는 숫자가 된다
 
+> **보류 항목** — 캐싱·HTTP 캐시 헤더·풀 튜닝은 **측정 근거가 필요한 항목**이라 Phase 6과 함께 판단한다.
+> k6가 없는 상태에서 숫자를 정하면 "설정값에는 측정 결과나 명시적 근거가 붙어야 한다"를 스스로 어긴다.
+>
 > **N+1 측정 시 주의 ①** — 1차 캐시 때문에 동일 상품 반복 주문으로는 재현되지 않는다.
 > 서로 다른 상품 20개 이상으로 시드를 구성하고, 측정 직전 `em.clear()`로 캐시를 비운다.
 >
@@ -105,7 +108,7 @@
 - [ ] `@SpringBootTest` + MockMvc E2E 1개
 - [ ] **동시성 테스트** — `ExecutorService` + `CountDownLatch`, 100건 동시 주문 포인트 정합성
       ⚠️ 테스트 메서드에 `@Transactional` 금지 (스레드가 트랜잭션 공유 못 함)
-- [ ] 낙관적 락 vs 비관적 락 비교 실험 → 처리량·실패율 표
+- [x] 낙관적 락 vs 비관적 락 비교 실험 → 처리량·실패율 표 *(Phase 3에서 선수행 — `docs/evidence/lock-comparison.md`)*
 - [ ] 트랜잭션 롤백 시나리오 테스트
 - [ ] ArchUnit — 계층·도메인 경계, setter 금지 강제
 - [ ] JaCoCo + 커버리지 게이트 (DTO/엔티티 제외, 제외 사유 주석)
