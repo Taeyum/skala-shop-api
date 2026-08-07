@@ -156,6 +156,19 @@ Phase 0 커밋 이후 원본 자료를 발견해 **항목 단위 대조**를 별
 | **오프라인 환경에서 이미지 빌드 실패** — `Dockerfile`이 빌드 단계에서 `./gradlew dependencies`·`bootJar`를 돌려 Gradle 의존성을 새로 내려받는다. 인터넷이 없으면 `docker compose up`이 빌드에서 멈춘다 | 5 (운영·배포) |
 | **채점 환경이 폐쇄망이면 실행 불가** — 위와 같은 원인. 베이스 이미지(`postgres:16-alpine`, `eclipse-temurin`) 풀도 레지스트리 접근이 필요하다. 대응은 사전 빌드된 이미지 배포·오프라인 의존성 캐시 동봉·jar 직접 제출 등이 있으나 **채점 환경을 모르는 상태에서 미리 대응하는 것은 근거 없는 대비**다. Phase 5에서 배포 방식을 정할 때 함께 판단한다 | 5 (운영·배포) |
 
+### Phase 1 진행 중 — 절대 규칙 해소 현황 (2026-08-07)
+
+Phase 0 점검에서 **5개 전부 미준수**로 기록했던 항목의 현재 상태다.
+(위 Phase 0 기록은 그 시점의 사실이므로 수정하지 않는다. 정식 Phase 1 자체 점검은 7단계 완료 후 수행한다.)
+
+| 절대 규칙 | 상태 | 근거 |
+|---|---|---|
+| 엔티티에 public setter가 없는가 | ✅ 해소 (5단계) | `@Setter` 제거, `@NoArgsConstructor(PROTECTED)`. 엔티티 3종에 setter 0개 |
+| Controller에 엔티티가 노출되지 않았는가 | ✅ 해소 (4단계) | 요청·응답 모두 DTO. `@RequestBody Product`·`Customer` 제거 |
+| Service가 웹 타입에 의존하지 않는가 | ✅ 해소 (6단계) | `@LoginCustomer` ArgumentResolver로 이동. Service import에 `jakarta.servlet`·`springframework.web`·공통 `Response` 없음 |
+| 금액이 전부 BigDecimal인가 | ✅ 해소 (3단계) | `@Column(precision=19, scale=2)`. 비교는 `compareTo`, 생성은 문자열 생성자 |
+| 도메인 간 Repository 직접 참조가 없는가 | ⏳ 미해소 | `CustomerService`가 `ProductRepository`를 여전히 주입한다. **7단계 도메인 패키지 재배치에서 `ProductService` 경유로 바꾼다** |
+
 ### Phase 0 기준점 커밋
 
 Phase 3(N+1·락)·Phase 6(성능) 의 **개선 전/후 비교는 이 시점을 대상으로 한다.**

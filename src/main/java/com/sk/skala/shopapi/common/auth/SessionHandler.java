@@ -1,4 +1,4 @@
-package com.sk.skala.shopapi.common;
+package com.sk.skala.shopapi.common.auth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;

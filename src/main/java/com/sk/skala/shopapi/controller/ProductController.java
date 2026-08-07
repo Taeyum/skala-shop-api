@@ -29,26 +29,27 @@ public class ProductController {
 	public Response<PagedList<ProductResponse>> getAllProducts(
 			@RequestParam(value = "offset", defaultValue = "0") int offset,
 			@RequestParam(value = "count", defaultValue = "10") int count) {
-		return productService.getAllProducts(offset, count);
+		return Response.success(productService.getAllProducts(offset, count));
 	}
 
 	@GetMapping("/{id}")
 	public Response<ProductResponse> getProductById(@PathVariable Long id) {
-		return productService.getProductById(id);
+		return Response.success(productService.getProductById(id));
 	}
 
 	@PostMapping
 	public Response<ProductResponse> createProduct(@RequestBody ProductRequest request) {
-		return productService.createProduct(request);
+		return Response.success(productService.createProduct(request));
 	}
 
 	@PutMapping
 	public Response<ProductResponse> updateProduct(@RequestBody ProductRequest request) {
-		return productService.updateProduct(request);
+		return Response.success(productService.updateProduct(request));
 	}
 
 	@DeleteMapping
 	public Response<Void> deleteProduct(@RequestBody ProductRequest request) {
-		return productService.deleteProduct(request);
+		productService.deleteProduct(request);
+		return Response.success();
 	}
 }

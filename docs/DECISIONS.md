@@ -146,8 +146,6 @@ scale 2 값이라 그 이하를 scale 2로 반올림해도 초과할 수 없다)
 
 ## 5. Service를 얇게, 도메인을 두껍게 — 웹 관심사 제거와 풍부한 도메인 모델
 
-> **작성 상태** — Phase 1 5단계(도메인) 완료분까지 기록. 6단계(웹 관심사 제거) 후 완성한다.
-
 두 작업을 한 항목으로 묶는 이유가 있다. **따로 보면 각각은 평범한 리팩터링이다** — "setter를 없앴다",
 "어노테이션으로 인증을 뺐다". 묶으면 하나의 방향이 된다: **Service에서 양쪽으로 밀어낸다.**
 위(웹 관심사)는 Controller로, 아래(불변식)는 엔티티로. 남는 것이 Service의 진짜 일 — 흐름 조율이다.
@@ -185,16 +183,36 @@ scale 2 값이라 그 이하를 scale 2로 반올림해도 초과할 수 없다)
 
 **트레이드오프**: 테스트에서 임의 상태의 엔티티를 만들기 번거로워진다. Phase 4에서 픽스처 팩토리로 해결한다.
 
-### 5-2. 웹 관심사를 Controller로 (6단계 — 예정)
+### 5-2. 웹 관심사를 Controller로 (6단계 — 완료)
 
-**스펙**: `CustomerService`가 `SessionHandler`를 주입받음
-**변경 예정**: `@LoginCustomer` ArgumentResolver로 Controller에서 해결, Service는 `customerId`만 받음.
+**스펙**: `CustomerService`가 `SessionHandler`를 주입받고 `Response`를 반환
+**변경**: `@LoginCustomer` ArgumentResolver로 Controller에서 인증을 해결, Service는 `customerId`만 받는다.
 Service의 `Response` 반환도 제거하고 DTO를 반환한다.
 
 **근거**: 쿠키·JWT·세션은 웹 계층 관심사다. Service가 이를 알면 ① 순수 단위 테스트가 불가능하고
 ② 배치·스케줄러가 같은 로직을 재사용할 수 없으며 ③ 인증 방식 변경이 도메인 로직에 파급된다.
 
-**API 영향**: 없음.
+**인증 실패를 Resolver에서 던지는 이유** — `null`을 주입하고 Service가 판단하게 하면 Service가 다시
+"인증"이라는 웹 관심사를 아는 셈이 되어 이 단계의 목적이 무너진다. `@LoginCustomer`가 붙은 엔드포인트는
+인증이 필수라는 선언이고, 쿠키가 없거나 토큰이 무효하면 **Service까지 내려가지 않는다.**
+
+**옮겨간 것들**
+
+| 무엇 | Phase 0 | 지금 |
+|---|---|---|
+| 쿠키에서 customerId 추출 | `CustomerService`가 `SessionHandler` 주입 | `LoginCustomerArgumentResolver` |
+| 토큰 발급·쿠키 적재 | `CustomerService.loginCustomer` | `CustomerController.loginCustomer` |
+| `Response` 포장 | Service 전 메서드 | Controller |
+| `SessionHandler` 위치 | `common/` | `common/auth/` — 웹 인증 컴포넌트임을 위치로 드러낸다 |
+
+**검증**: Service 두 개의 import에 `jakarta.servlet`·`springframework.web`·공통 `Response`가 하나도 없다.
+
+> **아직 Service에 남은 검증 하나** — `loginCustomer`의 `isAnyEmpty(customerId, customerPassword)`.
+> 이는 도메인 불변식이 아니라 **요청 바디에 값이 들어왔는가**를 보는 형태 검사이고,
+> `findCustomer(null)` 호출을 막는 역할을 한다. Phase 2에서 Bean Validation(`@NotBlank` + `@Valid`)으로
+> 바꾸면 Controller 계층으로 올라가 Service에서 사라진다.
+
+**API 영향**: 없음. 엔드포인트·요청·응답 형태 모두 그대로다.
 
 ---
 
@@ -361,7 +379,7 @@ Phase 2 항목으로 남기기로 한 결정과 자기모순이 된다. 그래�
   한때 `ParameterException`으로 나눠 구현했다가 되돌렸다 — **그 부정확함 자체가 Phase 2 "Error → HTTP 상태 매핑"의 개선 대상**이기 때문이다. 미리 고치면 Phase 2는 매핑만 붙이는 작업이 되고, "자료의 에러 코드 설계가 부정확했고 매핑 과정에서 드러나 바로잡았다"는 근거가 사라진다 (10절 판정 기준).
   대신 맥락 메시지 `"invalid customerPoint"`를 붙여 **로그에서는 이 불일치가 보이게** 해뒀다
 - **`ResponseException`의 맥락 메시지** — 자료의 `("Customer not found")`를 받도록 2-인자 생성자를 뒀다. 다만 **응답 바디에는 `Error` 코드만 내보내고 메시지는 로그에만** 남긴다. 내부 사정을 클라이언트에 흘리지 않기 위해서다
-- **Service가 `Response`를 반환하는 것** — 자료를 따랐다. 계층 분리 관점에서는 Service가 웹 응답 포맷을 아는 것이 바람직하지 않지만, Phase 0은 개선 전 기준점이므로 자료를 따른다. **Phase 1에서 인증 분리(`@LoginCustomer`)와 함께 걷어낸다**
+- **Service가 `Response`를 반환하는 것** — Phase 0에서는 자료를 따랐다. 계층 분리 관점에서는 Service가 웹 응답 포맷을 아는 것이 바람직하지 않지만, 개선 전 기준점이므로 보존했다. **Phase 1 6단계에서 인증 분리(`@LoginCustomer`)와 함께 걷어냈다 — 개선 완료** (5절)
 
 ---
 
