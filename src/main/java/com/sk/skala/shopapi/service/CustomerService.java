@@ -13,7 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.sk.skala.shopapi.common.PagedList;
 import com.sk.skala.shopapi.common.Response;
 import com.sk.skala.shopapi.common.SessionHandler;
+import com.sk.skala.shopapi.data.dto.CustomerRequest;
+import com.sk.skala.shopapi.data.dto.CustomerResponse;
 import com.sk.skala.shopapi.data.dto.CustomerSession;
+import com.sk.skala.shopapi.data.dto.CustomerUpdateRequest;
 import com.sk.skala.shopapi.data.dto.OrderItemDto;
 import com.sk.skala.shopapi.data.dto.OrderListDto;
 import com.sk.skala.shopapi.data.dto.OrderRequest;
@@ -44,10 +47,11 @@ public class CustomerService {
 	// 웹 계층(쿠키·JWT)이 Service까지 들어와 있다 — Phase 1에서 제거 (DECISIONS.md 5절)
 	private final SessionHandler sessionHandler;
 
-	public Response<PagedList<Customer>> getAllCustomers(int offset, int count) {
+	public Response<PagedList<CustomerResponse>> getAllCustomers(int offset, int count) {
 		Page<Customer> page = customerRepository.findAll(PageRequest.of(offset, count));
-		return Response.success(
-				PagedList.of(page.getTotalElements(), offset, count, page.getContent()));
+		// 엔티티를 그대로 내보내던 때는 비밀번호가 응답에 실렸다. DTO에는 그 필드가 아예 없다
+		return Response.success(PagedList.of(page.getTotalElements(), offset, count,
+				page.getContent().stream().map(CustomerResponse::from).toList()));
 	}
 
 	@Transactional(readOnly = true)
@@ -73,21 +77,23 @@ public class CustomerService {
 				.build());
 	}
 
-	public Response<Customer> createCustomer(Customer customer) {
-		if (StringUtil.isAnyEmpty(customer.getCustomerId(), customer.getCustomerPassword())) {
+	public Response<CustomerResponse> createCustomer(CustomerRequest request) {
+		if (StringUtil.isAnyEmpty(request.getCustomerId(), request.getCustomerPassword())) {
 			throw new ParameterException("customerId, customerPassword");
 		}
-		if (customerRepository.existsByCustomerId(customer.getCustomerId())) {
+		if (customerRepository.existsByCustomerId(request.getCustomerId())) {
 			throw new ResponseException(Error.DATA_DUPLICATED, "Customer already exists");
 		}
-		// 클라이언트가 customerPoint를 실어 보내면 그대로 반영된다 (Mass Assignment) — Phase 2에서 차단
-		if (customer.getCustomerPoint() == null) {
-			customer.setCustomerPoint(INITIAL_POINT);
-		}
-		return Response.success(customerRepository.save(customer));
+		Customer customer = new Customer();
+		customer.setCustomerId(request.getCustomerId());
+		customer.setCustomerPassword(request.getCustomerPassword());
+		// 초기 포인트는 서버가 정한다. CustomerRequest에 customerPoint 필드가 없으므로
+		// 클라이언트는 이 값을 지정할 방법 자체가 없다 (Mass Assignment 구조적 차단)
+		customer.setCustomerPoint(INITIAL_POINT);
+		return Response.success(CustomerResponse.from(customerRepository.save(customer)));
 	}
 
-	public Response<Customer> loginCustomer(CustomerSession customerSession) {
+	public Response<CustomerResponse> loginCustomer(CustomerSession customerSession) {
 		if (StringUtil.isAnyEmpty(customerSession.getCustomerId(),
 				customerSession.getCustomerPassword())) {
 			throw new ParameterException("customerId, customerPassword");
@@ -99,16 +105,14 @@ public class CustomerService {
 		}
 		sessionHandler.storeAccessToken(customer.getCustomerId());
 
-		// 조회한 엔티티의 비밀번호를 지워서 반환하면, 영속성 컨텍스트가 열려 있을 때
-		// 더티 체킹으로 DB의 비밀번호까지 날아간다. 응답 전용 복사본을 만든다
-		Customer result = new Customer();
-		result.setCustomerId(customer.getCustomerId());
-		result.setCustomerPoint(customer.getCustomerPoint());
-		return Response.success(result);
+		// 엔티티를 반환하던 때는 비밀번호를 빼려고 null을 세팅했고, 영속 상태였다면
+		// 더티 체킹으로 DB의 비밀번호까지 지워질 코드였다 (JOURNAL.md 2026-08-07).
+		// 응답 DTO에는 비밀번호 필드가 없으므로 그 조작 자체가 불필요해졌다
+		return Response.success(CustomerResponse.from(customer));
 	}
 
 	// 본인 확인이 없다 — 남의 계정도 고칠 수 있다 (BOLA). Phase 2에서 방어
-	public Response<Customer> updateCustomer(Customer request) {
+	public Response<CustomerResponse> updateCustomer(CustomerUpdateRequest request) {
 		// 자료(인쇄 551)는 customerId 존재 확인과 customerPoint 유효성을 한 줄에 묶어
 		// 둘 다 DATA_NOT_FOUND로 적었다. 검증 실패에 "데이터를 찾을 수 없음"은 의미가 맞지 않지만,
 		// 그 부정확함 자체가 Phase 2 "Error → HTTP 매핑"의 개선 대상이므로 기준점에서는 자료를 따른다.
@@ -124,10 +128,10 @@ public class CustomerService {
 		if (request.getCustomerPoint() != null) {
 			customer.setCustomerPoint(request.getCustomerPoint());
 		}
-		return Response.success(customerRepository.save(customer));
+		return Response.success(CustomerResponse.from(customerRepository.save(customer)));
 	}
 
-	public Response<Void> deleteCustomer(Customer request) {
+	public Response<Void> deleteCustomer(CustomerRequest request) {
 		// 주문 내역이 남아 있으면 FK 제약에 걸린다 — 참조 무결성 정책은 Phase 2에서 정한다
 		customerRepository.delete(findCustomer(request.getCustomerId()));
 		return Response.success();

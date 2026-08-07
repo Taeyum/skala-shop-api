@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sk.skala.shopapi.common.PagedList;
 import com.sk.skala.shopapi.common.Response;
-import com.sk.skala.shopapi.data.table.Product;
+import com.sk.skala.shopapi.data.dto.ProductRequest;
+import com.sk.skala.shopapi.data.dto.ProductResponse;
 import com.sk.skala.shopapi.service.ProductService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,30 +26,29 @@ public class ProductController {
 	private final ProductService productService;
 
 	@GetMapping("/list")
-	public Response<PagedList<Product>> getAllProducts(
+	public Response<PagedList<ProductResponse>> getAllProducts(
 			@RequestParam(value = "offset", defaultValue = "0") int offset,
 			@RequestParam(value = "count", defaultValue = "10") int count) {
 		return productService.getAllProducts(offset, count);
 	}
 
 	@GetMapping("/{id}")
-	public Response<Product> getProductById(@PathVariable Long id) {
+	public Response<ProductResponse> getProductById(@PathVariable Long id) {
 		return productService.getProductById(id);
 	}
 
-	// 엔티티를 그대로 요청 바디로 받는다 — Phase 1에서 Request DTO로 분리
 	@PostMapping
-	public Response<Product> createProduct(@RequestBody Product product) {
-		return productService.createProduct(product);
+	public Response<ProductResponse> createProduct(@RequestBody ProductRequest request) {
+		return productService.createProduct(request);
 	}
 
 	@PutMapping
-	public Response<Product> updateProduct(@RequestBody Product product) {
-		return productService.updateProduct(product);
+	public Response<ProductResponse> updateProduct(@RequestBody ProductRequest request) {
+		return productService.updateProduct(request);
 	}
 
 	@DeleteMapping
-	public Response<Void> deleteProduct(@RequestBody Product product) {
-		return productService.deleteProduct(product);
+	public Response<Void> deleteProduct(@RequestBody ProductRequest request) {
+		return productService.deleteProduct(request);
 	}
 }

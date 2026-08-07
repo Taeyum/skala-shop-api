@@ -139,9 +139,10 @@ Phase 0 커밋 이후 원본 자료를 발견해 **항목 단위 대조**를 별
 |---|---|
 | `jwt.secret`이 평문으로 저장소에 커밋됨 | 2 (JWT 하드닝) |
 | 쿠키에 HttpOnly·Secure·SameSite 없음 | 2 |
-| 비밀번호 평문 저장 + 목록 조회 응답에 노출 | 2 |
+| 비밀번호 평문 저장 (BCrypt 미적용) | 2 |
+| ~~목록 조회 응답에 비밀번호 노출~~ | **해소됨** — Phase 1 4단계 DTO 분리. `CustomerResponse`에 필드 자체가 없다 |
 | `PUT`/`DELETE`에 본인 확인 없음 (BOLA) | 2 |
-| 가입 시 `customerPoint`를 클라이언트가 지정 가능 (Mass Assignment) | 2 |
+| ~~가입 시 `customerPoint`를 클라이언트가 지정 가능 (Mass Assignment)~~ | **해소됨** — Phase 1 4단계. `CustomerRequest`에 `customerPoint` 필드가 없어 받을 방법 자체가 사라졌다 |
 | `quantity` 음수 검증 없음 — 주문 시 포인트가 늘어남 | 2 |
 | 비즈니스 예외가 전부 HTTP 200 — 클라이언트가 HTTP 레벨에서 성공/실패를 구분할 수 없다. 바디를 파싱해야만 알 수 있어 표준 HTTP 클라이언트·게이트웨이·모니터링이 에러를 못 잡는다 | 2 (Error → 상태 매핑) |
 | 음수 포인트 검증 실패가 `DATA_NOT_FOUND`로 나간다 — 검증 실패인데 "데이터를 찾을 수 없음"이라 매핑 시 400이 아닌 **404**가 된다. 자료의 에러 코드 설계가 부정확한 지점으로, 의도적으로 보존한 것 (DECISIONS.md 10·11.3절) | 2 (Error → 상태 매핑) |

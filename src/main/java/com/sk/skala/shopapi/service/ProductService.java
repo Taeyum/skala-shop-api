@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import com.sk.skala.shopapi.common.PagedList;
 import com.sk.skala.shopapi.common.Response;
+import com.sk.skala.shopapi.data.dto.ProductRequest;
+import com.sk.skala.shopapi.data.dto.ProductResponse;
 import com.sk.skala.shopapi.data.table.Product;
 import com.sk.skala.shopapi.exception.Error;
 import com.sk.skala.shopapi.exception.ParameterException;
@@ -23,59 +25,61 @@ public class ProductService {
 
 	private final ProductRepository productRepository;
 
-	public Response<PagedList<Product>> getAllProducts(int offset, int count) {
+	public Response<PagedList<ProductResponse>> getAllProducts(int offset, int count) {
 		// offset을 페이지 번호로 해석한다 (Spring Data PageRequest 관례).
 		// 강의 자료가 PageRequest 인자를 명시하지 않아 확정하지 못했다 — DECISIONS.md 8절
 		Page<Product> page = productRepository.findAll(PageRequest.of(offset, count));
-		return Response.success(
-				PagedList.of(page.getTotalElements(), offset, count, page.getContent()));
+		return Response.success(PagedList.of(page.getTotalElements(), offset, count,
+				page.getContent().stream().map(ProductResponse::from).toList()));
 	}
 
-	public Response<Product> getProductById(Long id) {
-		return Response.success(findProduct(id));
+	public Response<ProductResponse> getProductById(Long id) {
+		return Response.success(ProductResponse.from(findProduct(id)));
 	}
 
-	public Response<Product> createProduct(Product product) {
-		validate(product);
-		if (productRepository.existsByProductName(product.getProductName())) {
+	public Response<ProductResponse> createProduct(ProductRequest request) {
+		validate(request);
+		if (productRepository.existsByProductName(request.getProductName())) {
 			throw new ResponseException(Error.DATA_DUPLICATED, "Product name already exists");
 		}
-		// 자료는 "신규 Product의 ID를 0L로 세팅"하라고 하지만 따르지 않는다.
-		// Long 래퍼 필드에서 0L은 non-null이라 isNew()가 false가 되어 merge 경로를 타고
-		// 불필요한 SELECT가 추가된다 — 측정 근거는 docs/evidence/ (DECISIONS.md 9절)
-		return Response.success(productRepository.save(product));
+		// request.getId()는 무시한다 — 서버가 채울 값을 클라이언트가 정하게 두지 않는다
+		Product product = new Product();
+		product.setProductName(request.getProductName());
+		product.setProductPrice(request.getProductPrice());
+		return Response.success(ProductResponse.from(productRepository.save(product)));
 	}
 
-	public Response<Product> updateProduct(Product product) {
-		if (product.getId() == null) {
+	public Response<ProductResponse> updateProduct(ProductRequest request) {
+		if (request.getId() == null) {
 			throw new ParameterException("id");
 		}
-		validate(product);
-		Product found = findProduct(product.getId());
-		found.setProductName(product.getProductName());
-		found.setProductPrice(product.getProductPrice());
-		return Response.success(productRepository.save(found));
+		validate(request);
+		Product found = findProduct(request.getId());
+		found.setProductName(request.getProductName());
+		found.setProductPrice(request.getProductPrice());
+		return Response.success(ProductResponse.from(productRepository.save(found)));
 	}
 
-	public Response<Void> deleteProduct(Product product) {
-		if (product.getId() == null) {
+	public Response<Void> deleteProduct(ProductRequest request) {
+		if (request.getId() == null) {
 			throw new ParameterException("id");
 		}
-		productRepository.delete(findProduct(product.getId()));
+		productRepository.delete(findProduct(request.getId()));
 		return Response.success();
 	}
 
-	private Product findProduct(Long id) {
+	/** 다른 도메인(Customer)에서 상품이 필요할 때 쓰는 진입점. Repository를 직접 물지 않게 한다 */
+	public Product findProduct(Long id) {
 		return productRepository.findById(id)
 				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "Product not found"));
 	}
 
 	/** 상품명이 비어있거나 가격이 0 이하면 거부한다. */
-	private void validate(Product product) {
+	private void validate(ProductRequest request) {
 		// BigDecimal 비교는 compareTo — equals는 scale까지 보므로 0 != 0.00이 된다
-		if (StringUtil.isAnyEmpty(product.getProductName())
-				|| product.getProductPrice() == null
-				|| product.getProductPrice().compareTo(BigDecimal.ZERO) <= 0) {
+		if (StringUtil.isAnyEmpty(request.getProductName())
+				|| request.getProductPrice() == null
+				|| request.getProductPrice().compareTo(BigDecimal.ZERO) <= 0) {
 			throw new ParameterException("productName, productPrice");
 		}
 	}

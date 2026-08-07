@@ -12,10 +12,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sk.skala.shopapi.common.PagedList;
 import com.sk.skala.shopapi.common.Response;
+import com.sk.skala.shopapi.data.dto.CustomerRequest;
+import com.sk.skala.shopapi.data.dto.CustomerResponse;
 import com.sk.skala.shopapi.data.dto.CustomerSession;
+import com.sk.skala.shopapi.data.dto.CustomerUpdateRequest;
 import com.sk.skala.shopapi.data.dto.OrderListDto;
 import com.sk.skala.shopapi.data.dto.OrderRequest;
-import com.sk.skala.shopapi.data.table.Customer;
 import com.sk.skala.shopapi.service.CustomerService;
 
 import lombok.RequiredArgsConstructor;
@@ -28,10 +30,9 @@ public class CustomerController {
 	private final CustomerService customerService;
 
 	@GetMapping("/list")
-	public Response<PagedList<Customer>> getAllCustomers(
+	public Response<PagedList<CustomerResponse>> getAllCustomers(
 			@RequestParam(value = "offset", defaultValue = "0") int offset,
 			@RequestParam(value = "count", defaultValue = "10") int count) {
-		// 엔티티를 그대로 내보내 비밀번호가 응답에 실린다 — Phase 2에서 차단
 		return customerService.getAllCustomers(offset, count);
 	}
 
@@ -41,24 +42,24 @@ public class CustomerController {
 	}
 
 	@PostMapping
-	public Response<Customer> createCustomer(@RequestBody Customer customer) {
-		return customerService.createCustomer(customer);
+	public Response<CustomerResponse> createCustomer(@RequestBody CustomerRequest request) {
+		return customerService.createCustomer(request);
 	}
 
 	// 토큰 발급·쿠키 적재는 SessionHandler가 응답 객체를 직접 받아 처리한다
 	@PostMapping("/login")
-	public Response<Customer> loginCustomer(@RequestBody CustomerSession customerSession) {
+	public Response<CustomerResponse> loginCustomer(@RequestBody CustomerSession customerSession) {
 		return customerService.loginCustomer(customerSession);
 	}
 
 	@PutMapping
-	public Response<Customer> updateCustomer(@RequestBody Customer customer) {
-		return customerService.updateCustomer(customer);
+	public Response<CustomerResponse> updateCustomer(@RequestBody CustomerUpdateRequest request) {
+		return customerService.updateCustomer(request);
 	}
 
 	@DeleteMapping
-	public Response<Void> deleteCustomer(@RequestBody Customer customer) {
-		return customerService.deleteCustomer(customer);
+	public Response<Void> deleteCustomer(@RequestBody CustomerRequest request) {
+		return customerService.deleteCustomer(request);
 	}
 
 	@PostMapping("/order")
