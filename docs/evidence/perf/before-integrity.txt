@@ -1,0 +1,119 @@
+# ===== 측정 조건 =====
+# 일시        : 2026-08-07 16:25:36 +0900
+# 커밋        : 7cecca1462a4b18bac84d57f875cc1d538402fe6 (phase5-operations)
+# 작업트리    : 수정됨(dirty)
+# 스크립트    : integrity.js
+# k6 인자     : 
+# 호스트      : Darwin 25.5.0 arm64 / Apple M5 / 코어 10
+# Docker VM   : CPU 10 / MEM 7GB
+# 앱 이미지   : skala-shop-api:local
+# DB          : postgres:16-alpine
+# 워밍업      : 스크립트 내 warmup 시나리오 참조 (measure 태그만 임계값 적용)
+# DB 초기화   : 측정 직전 app 재기동 (ddl-auto=create)
+# =====================
+
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /perf/integrity.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 50 max VUs, 3m30s max duration (incl. graceful stop):
+              * orders: 20000 iterations shared among 50 VUs (maxDuration: 3m0s, exec: order, gracefulStop: 30s)
+
+
+Run      [ 100% ] setup()
+orders   [   0% ]
+
+Run      [ 100% ] setup()
+orders   [   0% ]
+
+Run      [ 100% ] setup()
+orders   [   0% ]
+
+Run      [ 100% ] setup()
+orders   [   0% ]
+
+Run      [ 100% ] setup()
+orders   [   0% ]
+
+Run      [ 100% ] setup()
+orders   [   0% ]
+
+running (0m07.0s), 50/50 VUs, 509 complete and 0 interrupted iterations
+orders   [   3% ] 50 VUs  0m00.8s/3m0s  00509/20000 shared iters
+
+running (0m08.1s), 50/50 VUs, 1073 complete and 0 interrupted iterations
+orders   [   5% ] 50 VUs  0m01.9s/3m0s  01073/20000 shared iters
+
+running (0m09.0s), 50/50 VUs, 1495 complete and 0 interrupted iterations
+orders   [   7% ] 50 VUs  0m02.8s/3m0s  01495/20000 shared iters
+
+running (0m10.0s), 50/50 VUs, 3342 complete and 0 interrupted iterations
+orders   [  17% ] 50 VUs  0m03.8s/3m0s  03342/20000 shared iters
+
+running (0m11.0s), 50/50 VUs, 6120 complete and 0 interrupted iterations
+orders   [  31% ] 50 VUs  0m04.8s/3m0s  06121/20000 shared iters
+
+running (0m12.0s), 50/50 VUs, 9211 complete and 0 interrupted iterations
+orders   [  46% ] 50 VUs  0m05.8s/3m0s  09211/20000 shared iters
+
+running (0m13.0s), 50/50 VUs, 12666 complete and 0 interrupted iterations
+orders   [  63% ] 50 VUs  0m06.8s/3m0s  12666/20000 shared iters
+
+running (0m14.0s), 50/50 VUs, 16205 complete and 0 interrupted iterations
+orders   [  81% ] 50 VUs  0m07.8s/3m0s  16205/20000 shared iters
+
+running (0m15.0s), 00/50 VUs, 20000 complete and 0 interrupted iterations
+orders ✓ [ 100% ] 50 VUs  0m08.8s/3m0s  20000/20000 shared iters
+time="2026-08-07T07:25:52Z" level=info msg="[정합성] 고객 50명, 총 주문 수량 20000, 불일치 0" source=console
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 20002   1328.207253/s
+    checks_succeeded...: 100.00% 20002 out of 20002
+    checks_failed......: 0.00%   0 out of 20002
+
+    ✓ order 처리됨
+    ✓ 정합성 — 불일치 0
+    ✓ 정합성 — 주문이 실제로 일어났다
+
+    CUSTOM
+    orders_placed..................: 20000  1328.074446/s
+    resp_2xx.......................: 20101  1334.781222/s
+    setup_requests.................: 101    6.706776/s
+
+    HTTP
+    http_req_duration..............: avg=21.89ms med=14.84ms p(95)=56.08ms p(99)=150.32ms max=1.05s
+      { expected_response:true }...: avg=21.89ms med=14.84ms p(95)=56.08ms p(99)=150.32ms max=1.05s
+    http_req_failed................: 0.00%  0 out of 20151
+    http_reqs......................: 20151  1338.101408/s
+
+    EXECUTION
+    iteration_duration.............: avg=21.87ms med=14.92ms p(95)=54.02ms p(99)=150.64ms max=1.06s
+    iterations.....................: 20000  1328.074446/s
+    vus............................: 0      min=0          max=50
+    vus_max........................: 50     min=50         max=50
+
+    NETWORK
+    data_received..................: 3.9 MB 262 kB/s
+    data_sent......................: 6.8 MB 452 kB/s
+
+
+
+
+running (0m15.1s), 00/50 VUs, 20000 complete and 0 interrupted iterations
+orders ✓ [ 100% ] 50 VUs  0m08.8s/3m0s  20000/20000 shared iters
