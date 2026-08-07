@@ -137,10 +137,61 @@ scale 2 값이라 그 이하를 scale 2로 반올림해도 초과할 수 없다)
 **스펙**: `controller/`, `service/`, `repository/`, `data/`
 **변경**: `product/`, `customer/`, `order/`, `global/`
 
-**근거**: 모듈러 모놀리스. 도메인 폴더 하나가 미래의 마이크로서비스 하나에 대응한다. 기술 계층 구조는 서비스 분리 시 모든 폴더를 헤집어야 하지만, 도메인 구조는 폴더째 떼어낼 수 있다.
+**근거**: 모듈러 모놀리스. 도메인 폴더 하나가 미래의 마이크로서비스 하나에 대응한다. 기술 계층 구조는
+서비스 분리 시 모든 폴더를 헤집어야 하지만, 도메인 구조는 폴더째 떼어낼 수 있다.
 "Monolith First" — 처음부터 쪼개지 않고, 경계만 명확히 그어 필요할 때 분리한다.
 
 **트레이드오프**: 강의 자료의 폴더 구조와 다르다. 클래스명과 API는 100% 동일하게 유지해 대조 가능성을 확보.
+
+### OrderItem을 왜 별도 도메인으로 두었나
+
+주문은 고객·상품 **양쪽에 걸쳐** 있어 어디에 두든 근거가 필요하다.
+
+- `OrderItem`은 `quantity`·`orderedAmount`라는 **고유 속성**을 가진다. 속성 없는 연결 테이블이면
+  한쪽에 붙여도 되지만, 결제 총액을 들고 있는 이상 독립 개념으로 볼 근거가 있다
+- `customer/`에 두면 상품 도메인이 고객 도메인 내부를 참조해야 하고, `product/`에 두면 반대가 된다.
+  어느 쪽이든 **한 도메인이 다른 도메인의 내부 구조에 묶인다**
+- 별도 도메인으로 두면 `order → customer`, `order → product` **단방향**으로 정리된다
+
+### 의존 방향 — 못박아 둔다
+
+```
+        order
+        ╱    ╲
+   customer  product      (customer ↔ product 사이에는 의존이 없다)
+```
+
+**`customer`와 `product`는 `order`를 알지 않는다.** 역방향이 생기는 순간 순환이 된다.
+
+이 규칙 때문에 `GET /api/customers/{customerId}`(고객 정보 + 보유 상품)의 조립을 **주문 도메인이 맡는다.**
+고객 도메인이 조립하면 `customer → order` 의존이 생겨 순환이 되기 때문이다. URI는 고객 쪽이지만
+읽는 데이터의 중심은 주문 목록이므로 위치도 어색하지 않다.
+
+각 Service의 의존은 다음이 전부다.
+
+| Service | 의존 |
+|---|---|
+| `ProductService` | `ProductRepository` |
+| `CustomerService` | `CustomerRepository` |
+| `OrderService` | `OrderItemRepository` + `CustomerService` + `ProductService` |
+
+**검증**: 어떤 도메인도 다른 도메인의 Repository를 import하지 않는다. `product/`·`customer/`는 다른
+도메인을 아예 참조하지 않고, `order/`만 두 도메인의 **엔티티**를 참조한다 — JPA 연관관계라 불가피하다.
+
+### `findCustomer`·`findProduct`가 엔티티를 반환하는 것 — 알고 남겨둔 경계
+
+다른 도메인에 노출되는 이 두 메서드는 엔티티를 그대로 반환한다. **MSA로 분리하면 이 자리가 원격 호출
+경계가 되고 엔티티는 직렬화 경계를 넘지 못한다.** 지금 DTO로 바꾸지 않는 이유는, 호출자가 이 값을
+`OrderItem`의 **JPA 연관관계로 그대로 쓰기** 때문이다.
+
+```java
+OrderItem.of(customer, product, quantity, amount)   // 연관 엔티티가 필요하다
+```
+
+DTO를 반환하려면 `OrderItem`이 `Customer`·`Product` 참조 대신 `customerId`·`productId`를 들어야 한다.
+그것이 곧 **ID 참조 전환**이고, `PLAN.md` Phase 7 MSA 전환 로드맵의 첫 항목이다. 지금 반쪽만 바꾸면
+DTO를 받아 다시 엔티티를 조회하는 코드가 생겨 쿼리만 늘고 얻는 것이 없다. **전환은 ID 참조와 함께 간다.**
+
 
 ---
 

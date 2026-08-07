@@ -20,6 +20,7 @@ import com.sk.skala.shopapi.customer.dto.CustomerSession;
 import com.sk.skala.shopapi.customer.dto.CustomerUpdateRequest;
 import com.sk.skala.shopapi.order.dto.OrderListDto;
 import com.sk.skala.shopapi.order.dto.OrderRequest;
+import com.sk.skala.shopapi.order.service.OrderService;
 import com.sk.skala.shopapi.customer.service.CustomerService;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,8 @@ import lombok.RequiredArgsConstructor;
 public class CustomerController {
 
 	private final CustomerService customerService;
+	// 고객 + 보유 상품 조회와 주문·취소는 주문 도메인이 담당한다
+	private final OrderService orderService;
 	// 토큰 발급·쿠키 적재는 웹 관심사다. Service가 아니라 여기가 제자리다
 	private final SessionHandler sessionHandler;
 
@@ -42,7 +45,7 @@ public class CustomerController {
 
 	@GetMapping("/{customerId}")
 	public Response<OrderListDto> getCustomerById(@PathVariable String customerId) {
-		return Response.success(customerService.getCustomerById(customerId));
+		return Response.success(orderService.getCustomerOrders(customerId));
 	}
 
 	@PostMapping
@@ -72,14 +75,14 @@ public class CustomerController {
 	@PostMapping("/order")
 	public Response<Void> placeOrder(@LoginCustomer String customerId,
 			@RequestBody OrderRequest order) {
-		customerService.placeOrder(customerId, order);
+		orderService.placeOrder(customerId, order);
 		return Response.success();
 	}
 
 	@PostMapping("/cancel")
 	public Response<Void> cancelOrder(@LoginCustomer String customerId,
 			@RequestBody OrderRequest order) {
-		customerService.cancelOrder(customerId, order);
+		orderService.cancelOrder(customerId, order);
 		return Response.success();
 	}
 }
