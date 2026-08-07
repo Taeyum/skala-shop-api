@@ -152,9 +152,18 @@ public class CustomerService {
 			item.setCustomer(customer);
 			item.setProduct(product);
 			item.setQuantity(order.getQuantity());
+			item.setOrderedPrice(product.getProductPrice());
 		} else {
-			// 재주문은 신규 행이 아니라 수량 누적 — 고객당 상품 1행 불변식
-			item.setQuantity(item.getQuantity() + order.getQuantity());
+			// 재주문은 신규 행이 아니라 수량 누적 — (customer_id, product_id) 복합 UNIQUE가 강제한다.
+			// 한 행에 단가가 하나뿐이라, 가격이 바뀐 뒤 재주문하면 어느 값을 남길지 정해야 한다.
+			// 가중평균을 쓴다 — 전량 취소 시 환불 총액이 결제 총액과 일치하는 유일한 선택이다.
+			//   최초가 유지  : 가격 하락 후 재주문하면 과다 환불
+			//   현재가 덮어쓰기: 가격 상승 후 재주문하면 과다 환불 (지금 고치는 결함과 같은 형태)
+			int totalQuantity = item.getQuantity() + order.getQuantity();
+			double totalPaid = item.getOrderedPrice() * item.getQuantity()
+					+ product.getProductPrice() * order.getQuantity();
+			item.setOrderedPrice(totalPaid / totalQuantity);
+			item.setQuantity(totalQuantity);
 		}
 		orderItemRepository.save(item);
 		return Response.success();
@@ -174,9 +183,10 @@ public class CustomerService {
 			throw new ResponseException(Error.INSUFFICIENT_QUANTITY);
 		}
 
-		// 주문 당시가 아니라 '현재' 가격으로 환불한다 — 가격이 바뀌면 원금을 넘길 수 있다.
-		// Phase 1에서 orderedPrice 스냅샷으로 교정 (DECISIONS.md 2절)
-		double refund = product.getProductPrice() * order.getQuantity();
+		// 주문 시점 단가로 환불한다. 현재가를 쓰면 가격 상승 후 취소할 때 원금을 초과한다
+		// (실측: 15,000짜리 2개 주문 후 50,000으로 인상하고 1개 취소 → 잔액이 원금보다 20,000 많았다).
+		// 근거와 개선 전/후 수치는 DECISIONS.md 2절
+		double refund = item.getOrderedPrice() * order.getQuantity();
 		customer.setCustomerPoint(customer.getCustomerPoint() + refund);
 
 		int remain = item.getQuantity() - order.getQuantity();
