@@ -67,6 +67,29 @@ SPEC이 요구하는 JSON 모양을 엔티티만으로 만들 수 없고, 강의
 - [x] 근거 없는 설정값이 남아 있지 않은가
       HikariCP·Tomcat은 기본값 유지(Phase 3에서 측정 후 조정). `jwt.expiration-ms: 3600000`은 Phase 0 임시값임을 주석에 명시
 
+### 강의 자료 명세 대조 (2026-08-07 추가 수행)
+
+Phase 0 커밋 이후 원본 자료를 발견해 **항목 단위 대조**를 별도로 수행했다.
+
+**대조 범위** — 인쇄 548~556. `ProductService` 5개 메서드, `CustomerService` 8개 메서드,
+`ProductController` 5개, `CustomerController` 8개. 슬라이드의 산문(`- 항목`) 한 줄을 하나의 체크 항목으로 옮겨
+코드에서 해당 동작의 존재를 직접 확인했다.
+
+**결과**
+
+| 구분 | 건수 | 조치 |
+|---|---|---|
+| 명세대로 구현됨 | 대부분 (비즈니스 로직 항목 전부) | — |
+| 메서드명 불일치 | 9건 | 자료에 맞춰 정정 (`getProducts`→`getAllProducts` 등) |
+| Service 반환 타입 불일치 | 전 메서드 | `Response` 반환으로 되돌림. Phase 1에서 다시 걷어낼 예정 |
+| 검증 누락 | 2건 | `updateCustomer`의 포인트 검증, `ResponseException` 2-인자 생성자 |
+| 메서드 부재 | 1건 | `SessionHandler.storeAccessToken` 추가 (`writeCookie`+`createToken` 통합) |
+| 따르지 않기로 한 지침 | 1건 | Product ID `0L` 세팅 — SQL 로그 실측 후 미적용 (DECISIONS.md 10.2) |
+| 자료 자체의 오류 | 5건 | DECISIONS.md 10.1에 기록 |
+
+**대조 후 API 계약 재확인** — URI·HTTP 메서드·요청/응답 필드명·파라미터 기본값(`offset=0`, `count=10`)은
+8개 엔드포인트 전부 변경 없음. 어긋났던 것은 자바 메서드명이지 계약이 아니다.
+
 ### 발견한 문제
 
 Phase 0 기준점이므로 **지금 고치지 않는다.** 해당 Phase에서 처리하고 그때 이 목록을 다시 확인한다.

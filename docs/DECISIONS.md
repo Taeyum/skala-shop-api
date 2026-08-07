@@ -172,7 +172,38 @@ API 계약(URI·파라미터명)은 그대로이고 Service 한 줄만 고치면
 
 ---
 
-## 10. 적용하지 않은 패턴과 이유
+## 10. 강의 자료의 오류와 해석
+
+원본 자료라고 무비판 수용하지 않는다. 대조 과정에서 나온 오기·모순과 그 판단을 남긴다.
+
+### 10.1 명백한 오기 — 따르지 않음
+
+| 위치 | 자료 내용 | 판단 |
+|---|---|---|
+| 인쇄 546 | 실습 2-3 슬라이드 제목은 `[CustomerProductRepository.java]`인데 내용은 "**OrderItem** 엔터티를 관리하기 위해" | 폴더 구조(인쇄 556)와 `CustomerService` 필드가 모두 `OrderItemRepository`다. **3곳 중 2곳**을 따라 `OrderItemRepository`로 구현 |
+| 인쇄 548 | `[ProductService.java]` 슬라이드인데 클래스 선언이 `public class CustomerService` | 다음 슬라이드에서 복사한 실수. `ProductService`로 구현 |
+| 인쇄 549 | `deleteProduct` 설명에 "**저장** 후 Response 반환" | 삭제 메서드에 저장이 있을 수 없다. 삭제 후 반환 |
+| 인쇄 551 | `deleteCustomer`도 동일하게 "저장 후 Response 반환" | 위와 같음 |
+| 인쇄 551 | `createCustomer(Customer customerSession)` — 타입은 `Customer`인데 파라미터명이 `customerSession` | 로그인용 `CustomerSession`과 혼동한 흔적. 파라미터명은 `customer` |
+
+### 10.2 따르지 않기로 한 지침 — 신규 Product의 ID를 `0L`로 세팅 (인쇄 549)
+
+**구현하지 않는다.** 추측이 아니라 SQL 로그로 확인했다 → [`docs/evidence/product-id-0L-vs-null.md`](evidence/product-id-0L-vs-null.md)
+
+`Product.id`는 `Long` 래퍼 + `@GeneratedValue(IDENTITY)`다. Spring Data의 `isNew()`는 래퍼 타입에서 `id == null`로 판정하므로, `0L`을 넣으면 non-null이라 **"이미 있는 엔티티"로 분류되어 `persist` 대신 `merge` 경로를 탄다.** merge는 id=0인 행을 찾으러 SELECT를 날리고, 없으면 결국 INSERT한다.
+
+측정 결과 **상품 등록 1건당 쿼리 2회 → 3회**. 결과는 같고 SELECT만 늘어난다.
+이 지침은 id가 원시형 `long`이던 시절(기본값 0이라 null 판정이 불가능했던) 관용구로 보인다.
+
+### 10.3 해석으로 메운 부분
+
+- **`updateCustomer`의 포인트 검증 오류 코드** — 자료는 "customerId와 customerPoint 유효성 체크 : 오류시 `ResponseException(Error.DATA_NOT_FOUND)`"라고 두 검사를 한 줄에 묶었다. 음수 포인트에 `DATA_NOT_FOUND`("데이터를 찾을 수 없음")를 쓰는 것은 의미가 맞지 않는다. **존재 확인은 `DATA_NOT_FOUND`, 포인트 유효성은 `ParameterException`**으로 나눴다 (SPEC.md 4절: 형식 오류 → `ParameterException` → 400)
+- **`ResponseException`의 맥락 메시지** — 자료의 `("Customer not found")`를 받도록 2-인자 생성자를 뒀다. 다만 **응답 바디에는 `Error` 코드만 내보내고 메시지는 로그에만** 남긴다. 내부 사정을 클라이언트에 흘리지 않기 위해서다
+- **Service가 `Response`를 반환하는 것** — 자료를 따랐다. 계층 분리 관점에서는 Service가 웹 응답 포맷을 아는 것이 바람직하지 않지만, Phase 0은 개선 전 기준점이므로 자료를 따른다. **Phase 1에서 인증 분리(`@LoginCustomer`)와 함께 걷어낸다**
+
+---
+
+## 11. 적용하지 않은 패턴과 이유
 
 *(보고서 핵심 섹션 — 맥락 없는 기술 적용을 피했다는 근거)*
 
@@ -186,7 +217,7 @@ API 계약(URI·파라미터명)은 그대로이고 Service 한 줄만 고치면
 
 ---
 
-## 11. 알려진 한계
+## 12. 알려진 한계
 
 - **주문 이력 부재**: 현재 `OrderItem`은 "주문 이력"이 아니라 "현재 보유 수량"에 가깝다. 취소하면 기록이 사라져 감사 추적이 불가능하다. 실무라면 `Order`(헤더) + `OrderLine`(상세) 구조로 분리해야 한다
 - **offset 페이징**: 뒤 페이지일수록 느려지고, 조회 중 데이터 변경 시 항목이 중복·누락된다. 대용량에서는 커서 기반 페이징 필요
