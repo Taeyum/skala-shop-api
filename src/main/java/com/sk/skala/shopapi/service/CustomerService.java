@@ -75,7 +75,7 @@ public class CustomerService {
 		if (StringUtil.isAnyEmpty(customer.getCustomerId(), customer.getCustomerPassword())) {
 			throw new ParameterException("customerId, customerPassword");
 		}
-		if (customerRepository.existsById(customer.getCustomerId())) {
+		if (customerRepository.existsByCustomerId(customer.getCustomerId())) {
 			throw new ResponseException(Error.DATA_DUPLICATED, "Customer already exists");
 		}
 		// 클라이언트가 customerPoint를 실어 보내면 그대로 반영된다 (Mass Assignment) — Phase 2에서 차단
@@ -199,7 +199,8 @@ public class CustomerService {
 		if (customerId == null) {
 			throw new ParameterException("customerId");
 		}
-		return customerRepository.findById(customerId)
+		// PK가 아니라 자연키로 찾는다 — API 경로는 여전히 customerId를 쓴다 (DECISIONS.md 1절)
+		return customerRepository.findByCustomerId(customerId)
 				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND, "Customer not found"));
 	}
 
