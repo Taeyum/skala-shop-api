@@ -7,6 +7,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    # 쿼리 수를 로그가 아니라 테스트로 단언하기 위한 계측 (Hibernate Statistics).
+    # 운영 설정(application.yml)에는 넣지 않는다 — 매 쿼리마다 카운터를 갱신하는 비용이 있고,
+    # 그 비용을 감수할 근거가 측정 상황 밖에는 없다
+    properties:
+      hibernate:
+        generate_statistics: true
 
   # 테스트는 각자 필요한 픽스처를 직접 만든다 — 시드가 섞이면 건수 단언이 깨진다.
   # E2E 테스트가 시드를 요구하면 Phase 4에서 재검토한다
