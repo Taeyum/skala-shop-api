@@ -26,6 +26,10 @@ services:
 
   app:
     build: .
+    # 배포에 쓸 이미지 태그. 기본값은 로컬 빌드용이고,
+    # 롤백할 때 APP_IMAGE=skala-shop-api:<git-sha> 로 지정해 이전 이미지를 그대로 올린다
+    # (README '배포와 롤백'). 이미지가 이미 있으면 --no-build 로 빌드를 건너뛴다
+    image: ${APP_IMAGE:-skala-shop-api:local}
     depends_on:
       postgres:
         condition: service_healthy

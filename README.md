@@ -117,6 +117,111 @@ echo 'testcontainers.reuse.enable=true' >> ~/.testcontainers.properties
 
 재사용 설정은 개발자별 opt-in이라 저장소에 포함할 수 없다.
 
+## API 문서 (Swagger)
+
+앱을 띄운 뒤 브라우저에서 **<http://localhost:8080/swagger-ui.html>** 을 연다.
+
+1. `2. 고객` → `POST /api/customers` 로 가입한다
+2. `POST /api/customers/login` 을 실행한다 — **쿠키가 브라우저에 저장되므로 그다음부터는 그냥 호출하면 된다**
+3. `3. 주문` 의 주문·취소·조회를 그대로 실행한다
+
+자물쇠 표시가 있는 5개는 인증이 필요하다. 쿠키가 `HttpOnly`라 `Authorize` 버튼으로는 값을 넣을 수 없고,
+넣을 필요도 없다 — 로그인 API를 실행하는 것이 곧 인증이다.
+
+끄려면 `SWAGGER_ENABLED=false` 로 띄운다.
+
+## 운영 엔드포인트
+
+| 경로 | 용도 |
+|---|---|
+| `/actuator/health` | 전체 상태 |
+| `/actuator/health/readiness` | 트래픽을 받을 수 있는가 (DB 포함). 실패 시 로드밸런서에서 제외 |
+| `/actuator/health/liveness` | 프로세스가 살아 있는가. 실패 시 재시작 |
+
+그 밖의 Actuator 엔드포인트(`env`·`configprops`·`heapdump` 등)는 **의도적으로 닫혀 있다**(404).
+`env`에는 `JWT_SECRET`과 DB 비밀번호가, `heapdump`에는 메모리의 평문이 그대로 담긴다.
+
+모든 응답에는 `X-Trace-Id` 헤더가 붙는다. 오류를 신고할 때 이 값을 함께 알려주면
+서버 로그에서 해당 요청 전체(SQL 포함)를 찾을 수 있다.
+
+## 네트워크가 필요하다 (폐쇄망이라면)
+
+`docker compose up`은 **인터넷 접속을 전제로 한다.**
+
+1. 베이스 이미지 풀 — `eclipse-temurin:17-jdk`, `eclipse-temurin:17-jre`, `postgres:16-alpine`
+2. Gradle 의존성 다운로드 — 빌드 단계의 `./gradlew dependencies`
+
+**폐쇄망에서는 아래처럼 이미지를 미리 만들어 옮긴다.**
+
+```bash
+# 인터넷이 되는 머신에서
+docker compose build
+docker save skala-shop-api:local postgres:16-alpine -o shop-images.tar
+
+# 폐쇄망 머신에서
+docker load -i shop-images.tar
+APP_IMAGE=skala-shop-api:local docker compose up -d --no-build   # 빌드를 건너뛴다
+```
+
+`--no-build`가 핵심이다. 이것이 없으면 compose가 다시 빌드를 시도하고 의존성 다운로드에서 멈춘다.
+
+> 이 절차를 **미리 수행해 두지는 않았다.** 채점 환경이 폐쇄망이라는 근거가 없고,
+> 사전 빌드된 jar나 이미지를 저장소에 넣으면 "소스에서 빌드된다"는 성질을 잃는다.
+> 근거 없는 대비 대신 **필요할 때 쓸 절차**를 남긴다 (`DECISIONS.md` 22절).
+
+## 배포와 롤백
+
+### 이미지 태그 전략
+
+**`latest`를 배포에 쓰지 않는다.** `latest`는 "지금 무엇이 떠 있는지"를 알려주지 못하고,
+롤백할 대상을 특정할 수도 없다. 같은 태그가 시점마다 다른 이미지를 가리키므로
+"어제 것으로 되돌려라"가 불가능해진다.
+
+```bash
+# 빌드 — 커밋 해시를 태그로 쓴다. 코드와 이미지가 1:1로 대응된다
+GIT_SHA=$(git rev-parse --short HEAD)
+docker build -t skala-shop-api:$GIT_SHA .
+
+# 사람이 읽을 버전이 필요하면 함께 붙인다 (교체가 아니라 추가)
+docker tag skala-shop-api:$GIT_SHA skala-shop-api:v1.2.0
+```
+
+| 태그 | 용도 |
+|---|---|
+| `<git-sha>` | **배포에 쓰는 태그.** 불변이며 커밋과 1:1 |
+| `v<semver>` | 릴리스 표시용 별칭 |
+| `latest` | 로컬 편의용. **배포 금지** |
+
+### 롤백 절차
+
+```bash
+# 1. 지금 무엇이 떠 있는지 확인한다 (추측하지 않는다)
+docker compose ps
+docker inspect --format '{{.Config.Image}}' $(docker compose ps -q app)
+
+# 2. 되돌릴 대상을 고른다
+docker images skala-shop-api --format '{{.Tag}}\t{{.CreatedAt}}'
+
+# 3. 태그를 바꿔 다시 올린다
+APP_IMAGE=skala-shop-api:<이전-git-sha> docker compose up -d --no-deps app
+
+# 4. 확인 — health가 healthy가 될 때까지 기다린 뒤 스모크 테스트
+docker inspect --format '{{.State.Health.Status}}' $(docker compose ps -q app)
+curl -fsS http://localhost:8080/actuator/health/readiness
+```
+
+`stop_grace_period: 30s`와 graceful shutdown 덕분에 **교체 시 처리 중이던 요청은 끝까지 처리된다.**
+
+### 롤백이 안 되는 경우 — 스키마
+
+애플리케이션은 되돌릴 수 있지만 **DB 스키마는 되돌아가지 않는다.**
+현재 `ddl-auto: create`이므로 재기동 시 스키마가 새로 만들어지고 **데이터가 사라진다**.
+학습 프로젝트라 이 설정을 유지하지만, 실서비스라면 다음이 전제다.
+
+- `ddl-auto: validate` + Flyway/Liquibase로 마이그레이션을 버전 관리
+- 컬럼 삭제·타입 변경은 **두 단계로** 나눈다(추가 → 이행 → 제거). 한 번에 바꾸면 롤백 불가
+- 롤백 대상 버전이 읽을 수 있는 스키마인지 배포 **전에** 확인한다
+
 ## 문서
 
 | 문서 | 내용 |
