@@ -64,9 +64,17 @@ public class CustomerService {
 				customerSession.getCustomerPassword())) {
 			throw new ParameterException("customerId, customerPassword");
 		}
-		Customer customer = findCustomer(customerSession.getCustomerId());
+		// findCustomer를 쓰지 않는다. 그러면 없는 ID는 DATA_NOT_FOUND(404), 틀린 비밀번호는
+		// NOT_AUTHENTICATED(401)로 갈려 공격자가 응답만 보고 '유효한 ID 목록'을 만들 수 있다
+		// — 사용자 열거(User Enumeration). 두 경우 모두 401로 통일한다 (DECISIONS.md 9-3절)
+		Customer customer = customerRepository.findByCustomerId(customerSession.getCustomerId())
+				.orElse(null);
 		// 일치 판단은 Customer가 한다. BCrypt로 바꾸며 인코더 인자가 하나 늘었을 뿐,
-		// '무엇이 일치인가'를 Service가 아는 구조로 돌아가지는 않았다
+		// '무엇이 일치인가'를 Service가 아는 구조로 돌아가지는 않았다.
+		// 로그에는 사유를 구분해 남긴다 — 밖으로 나가지 않으면 열거에 쓰이지 않는다
+		if (customer == null) {
+			throw new ResponseException(Error.NOT_AUTHENTICATED, "no such customerId");
+		}
 		if (!customer.matchesPassword(customerSession.getCustomerPassword(), passwordEncoder)) {
 			throw new ResponseException(Error.NOT_AUTHENTICATED, "password mismatch");
 		}

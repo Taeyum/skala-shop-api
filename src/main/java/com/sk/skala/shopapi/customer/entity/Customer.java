@@ -85,10 +85,11 @@ public class Customer {
 	}
 
 	public void changePoint(BigDecimal customerPoint) {
-		// 포인트는 음수가 될 수 없다. 오류 코드가 DATA_NOT_FOUND인 것은 강의 자료를 따른 것으로,
-		// 의미가 맞지 않는다는 판단은 Phase 2 "Error → HTTP 매핑"에서 교정한다 (DECISIONS.md 10절)
+		// 포인트는 음수가 될 수 없다. Phase 0~1에서는 강의 자료를 따라 DATA_NOT_FOUND로 던졌으나,
+		// 검증 실패에 "데이터를 찾을 수 없음"은 의미가 맞지 않고 매핑하면 404가 된다.
+		// 매핑 작업(Phase 2 B-1)이 이 부정확함을 드러내 ParameterException(400)으로 교정했다
 		if (customerPoint.compareTo(BigDecimal.ZERO) < 0) {
-			throw new ResponseException(Error.DATA_NOT_FOUND, "invalid customerPoint");
+			throw new ParameterException("customerPoint");
 		}
 		this.customerPoint = customerPoint;
 	}
