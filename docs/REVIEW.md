@@ -654,3 +654,126 @@ Phase 5에서 운영 코드가 바뀌는 자리(Actuator·Swagger·AOP 로깅)�
 1. JaCoCo 리포트를 **클래스 백분율이 아니라 미실행 라인·부분 분기 목록**으로 연다
 2. 그 목록이 **의도적으로 비운 것인지** 확인한다 (의도적이면 사유를 적는다)
 3. 목록에 없는데 확신이 필요한 곳만 변이를 넣는다 — 범위가 훨씬 좁아진다
+
+---
+
+## Phase 5 — 2026-08-07
+
+### 계약 준수
+- [x] SPEC.md의 URI·JSON 필드가 변경되지 않았는가 — **변경 없음**
+- [x] E2E 시나리오가 여전히 통과하는가 — curl 48/48 (로컬·compose·클론 모두)
+- 요청 DTO에 `@JsonProperty(WRITE_ONLY)`를 붙였으나 **요청 파싱은 그대로**다.
+  이 DTO들은 응답으로 나가지 않으므로(응답은 `CustomerResponse`) 계약에 영향이 없다
+- 응답에 `X-Trace-Id` 헤더가 추가됐다. **바디는 그대로**이므로 계약 이탈이 아니다
+
+### 절대 규칙
+- [x] 엔티티에 public setter 없음 — `BaseTimeEntity`의 감사 필드도 setter 없이
+      리스너가 리플렉션으로 채운다. 별도 테스트로 고정
+- [x] Controller에 엔티티 미노출 / 도메인 간 Repository 직접 참조 없음 /
+      Service가 웹 타입에 의존하지 않음 — ArchUnit 12건 그대로 통과
+- [x] 금액 BigDecimal · `open-in-view: false` 유지
+
+### 품질
+- [x] `./gradlew build` 통과 — **테스트 155건, 실패 0**, 커버리지 게이트 포함
+- [x] 설계 근거가 DECISIONS.md에 기록됐는가 — 19~23절 신설
+- [x] 근거 없는 설정값이 없는가 — `timeout-per-shutdown-phase: 20s`,
+      `MaxRAMPercentage=75`, `stop_grace_period: 30s` 모두 이유를 주석에 병기
+
+### 자산 점검 갱신 — 비밀번호의 로그 경로
+
+Phase 2에서 **"로그 경로 미점검"** 으로 남긴 항목을 닫는다.
+그때 점검하지 못한 이유는 **로그에 요청 바디를 찍는 코드가 없었기 때문**이다 — 없는 경로는 점검할 수 없다.
+API 로깅이 그 경로를 만드는 시점이 Phase 5다.
+
+| 경로 | 상태 |
+|---|---|
+| 응답 바디 | ✅ 응답 DTO에 필드 없음 + 엔티티 `@JsonIgnore` (Phase 2) |
+| **API 로그(AOP)** | ✅ **DTO `@JsonProperty(WRITE_ONLY)` + `SensitiveDataMasker` 이중 방어** |
+| 예외 메시지 → 500 응답 | ✅ traceId만 노출 (Phase 2 B-1, Phase 4에서 테스트로 고정) |
+| Actuator `/env`·`/heapdump` | ✅ 닫혀 있음 (테스트로 고정) |
+| SQL 로그 바인딩 파라미터 | ⚠️ 기본 비활성. 켜면 해시가 찍힌다 — 주석으로 경고 |
+
+> **"막았다"고 말할 수 있는 자산**에서 비밀번호의 `(로그 제외)` 단서를 뗀다.
+> 다만 **로그 캡처 테스트가 함께 있어야만** 그렇게 말할 수 있다 —
+> 첫 수동 검증은 거짓 음성이었다(로그가 아무것도 안 남기고 있었다).
+
+### 새로 발견해 처리한 것
+
+| # | 발견 | 계기 |
+|---|---|---|
+| 1 | **404·405·415·타입불일치가 전부 500 + ERROR 로그** | Actuator의 닫힌 엔드포인트를 두드려보다 |
+| 2 | **마스킹 검증이 거짓 음성** — 로그가 아무것도 안 남기고 있었다 | 로그 전문을 확인하다 |
+| 3 | **마스커가 `authorization=Bearer <token>`의 토큰을 놓침** | 단위 테스트 |
+| 4 | **HEALTHCHECK가 매번 실패** — `/bin/sh`가 dash라 `/dev/tcp` 불가 | `docker inspect` Health.Log |
+| 5 | **JPA Auditing이 `data.sql`과 슬라이스 테스트를 깸** | NOT NULL 제약 |
+
+1번은 Phase 2 이후 줄곧 있던 결함이다. **테스트가 전부 실재하는 경로만 호출**해서
+세 Phase 동안 드러나지 않았다 — Phase 4 후속 조사에서 세운 "예외 경로를 전수로 본다"의
+연장선이지만, 이번엔 **애플리케이션 밖(존재하지 않는 URL)** 이라 그때도 놓쳤다.
+
+### 측정하지 못한 것
+
+**graceful shutdown의 효과를 증명하지 못했다.** 세 가지 실험 모두 graceful과 immediate를
+변별하지 못했고, 마지막 실험은 측정 도구 자체가 실패했다(curl 프로세스 기동 > SIGTERM).
+확인된 것은 로그(`Commencing graceful shutdown`이 graceful에서만)뿐이다.
+원인은 이 API의 요청이 밀리초 단위라 "진행 중"인 창이 도구 오버헤드보다 좁기 때문이다.
+**기능이 켜진 것과 효과가 있는 것은 다르고, 후자는 미검증으로 남긴다.**
+
+### 이식성 재검증
+
+Dockerfile과 compose가 바뀌었으므로 Phase 0의 검증을 다시 했다.
+
+- 저장소 밖 클론에서 `POSTGRES_PORT=15433 SERVER_PORT=18080 docker compose up --build`
+- **원본 스택(8080)을 켜둔 채 동시 기동** — health `healthy`, E2E **48/48**, Swagger 302
+- 양쪽 모두 정상 동작 확인 후 클론 정리
+
+### 남은 문제
+
+| 문제 | 상태 |
+|---|---|
+| **HA 다중 인스턴스 (app 2개 + LB)** | ⏸ **Phase 5 미완.** 아래 참조 |
+| `GET /api/customers/list` 익명 노출 | ❌ 계약 유지 (테스트로 고정) |
+| 로그인 타이밍 부채널 / 요청 속도 제한 없음 | ❌ 미해결 |
+| graceful shutdown 효과 미측정 | ⚠️ 기능은 활성, 효과는 미검증 |
+| `ddl-auto: create` — 롤백 시 데이터 소실 | ⚠️ 학습 프로젝트라 유지. 근거는 `DECISIONS.md` 23절 |
+| 오프라인·폐쇄망 | ✅ **판단 완료** — 미리 대비하지 않고 절차만 문서화 (22절) |
+
+> **HA 다중 인스턴스는 이번 Phase에서 하지 않았다.** 무상태(JWT) 설계와 traceId 이어받기 등
+> 전제 조건은 갖췄으나, 로드밸런서 구성은 compose 구조를 바꾸고 포트 정책·헬스체크 연동을
+> 다시 정해야 해서 범위가 크다. **Phase 6의 부하 측정과 함께 하는 편이 자연스럽다** —
+> 다중 인스턴스의 값은 처리량으로 보여야 하고, 그 측정 도구가 Phase 6에서 준비된다.
+
+### Phase 6 대조군 판단
+
+**결론 — Phase 6의 직접 대조군은 `phase5-operations`다. `phase3-performance`는 더 이상 유효하지 않다.**
+
+근거는 실측이다 (같은 머신·같은 DB·30회 평균).
+
+| 경로 | `phase3-performance` | `phase5-operations` | 차이 |
+|---|---|---|---|
+| 상품 목록 (인증 X) | 3.5ms | 3.6ms | +0.1ms (노이즈) |
+| **주문 조회 (인증 O)** | **4.1ms** | **5.3ms** | **+1.2ms (+29%)** |
+| 로그인 | 68.8ms | 66.6ms | BCrypt가 지배, 노이즈 |
+
+AOP 로깅은 **모든 요청에서 인자를 JSON으로 직렬화**하고, MDC 필터가 요청마다 추가되며,
+엔티티마다 감사 컬럼이 늘었다. 절대값은 작지만 **요청당 상시 비용**이고,
+주문 조회처럼 짧은 경로에서는 상대적으로 크게 나타난다.
+
+Phase 6에서 커넥션 풀·캐싱을 튜닝할 때 `phase3-performance`를 대조군으로 쓰면
+**운영 계측 비용이 튜닝 효과에 섞인다.** Phase 2에서 BCrypt 때문에 기준선을 나눈 것과 같은 형태다.
+
+| 기준선 | 무엇을 보여주는가 |
+|---|---|
+| `phase0-baseline` | 전체 개선 여정 |
+| `phase1-structure` | 구조 재설계 효과 |
+| `phase2-security` | Phase 3 성능 개선의 대조군 |
+| `phase3-performance` | N+1·락 개선 완료 시점 |
+| `phase4-testing` | 런타임 무영향 (테스트만) |
+| **`phase5-operations`** | **Phase 6 튜닝의 직접 대조군** |
+
+> `phase4-testing`은 대조군 후보가 아니다 — 테스트 코드는 런타임에 영향이 없고,
+> 그 Phase의 운영 코드 변경(패키지 이동, `lombok.config`)도 요청 처리 로직을 바꾸지 않았다.
+
+### Phase 5 완료 커밋
+
+**태그: `phase5-operations`**

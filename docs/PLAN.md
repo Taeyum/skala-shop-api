@@ -128,19 +128,32 @@
 
 ## Phase 5 — 운영 · 배포
 
-- [ ] Swagger / OpenAPI (`springdoc-openapi-starter-webmvc-ui`)
-- [ ] AOP API 로깅 — 실행시간 + 비밀번호 마스킹
-- [ ] MDC traceId
-- [ ] Actuator health / readiness / liveness
-- [ ] Graceful shutdown
-- [ ] 프로파일 분리 (local / test / docker) + `docker-compose.yml` (app + postgres, healthcheck 기반 기동 순서)
-      (DB 전환에서 선구현 — 체크는 Phase 5 자체 점검에서 확인 후)
-- [ ] Dockerfile 하드닝 — non-root 유저, layered jar, JRE 슬림화
-      (compose 기동용 멀티스테이지 최소 구성은 DB 전환 시 선반영됨)
-- [ ] **HA 다중 인스턴스** — app 2개 + 로드밸런서, 무상태(JWT) 검증, 세션 없이 라운드로빈 동작 확인
-      (PostgreSQL 공유로 실증 가능해졌다 — DECISIONS.md 6절)
-- [ ] 배포 롤백 절차 문서화 (이미지 태그 전략)
-- [ ] JPA Auditing (`createdAt`, `updatedAt`)
+- [x] Swagger / OpenAPI (`springdoc-openapi-starter-webmvc-ui`)
+      쿠키 인증이 브라우저에서 그대로 동작한다. `SWAGGER_ENABLED` 스위치 (`DECISIONS.md` 19절)
+- [x] AOP API 로깅 — 실행시간 + 비밀번호 마스킹
+      **첫 검증이 거짓 음성이었다** (로그가 아무것도 안 남기고 있었다). 20절
+- [x] MDC traceId — 모든 로그 + 응답 헤더 `X-Trace-Id`. 500 응답의 traceId와 일치
+- [x] Actuator health / readiness / liveness — **화이트리스트**로 health만. 21절
+- [x] Graceful shutdown — 기능 활성 확인. **효과는 측정하지 못했다** (REVIEW 참조)
+- [x] 프로파일 분리 (local / test / docker) + `docker-compose.yml`
+- [x] Dockerfile 하드닝 — non-root, layered jar, JRE, 컨테이너 인식 JVM
+      **크기는 168MB로 동일**(이전에도 멀티스테이지+JRE). 이득은 재배포 전송량 56.9MB → 393kB
+- [ ] **HA 다중 인스턴스** — app 2개 + 로드밸런서
+      **Phase 6으로 미룬다.** 전제(무상태 JWT, traceId 이어받기)는 갖췄으나
+      다중 인스턴스의 값은 처리량으로 보여야 하고 그 측정 도구가 Phase 6에서 준비된다
+- [x] 배포 롤백 절차 문서화 (이미지 태그 전략) — **절차를 실제로 실행해 확인**했다. 23절
+- [x] JPA Auditing (`createdAt`, `updatedAt`)
+      `data.sql`과 `@DataJpaTest` 슬라이스가 깨졌고 NOT NULL 제약이 둘 다 잡았다
+- [x] 오프라인 빌드 대응 판단 — **미리 대비하지 않고 절차만 문서화**한다. 22절
+
+> **Phase 5에서 나온 것** — Actuator의 닫힌 엔드포인트를 두드려보다
+> **404·405·415·타입불일치가 전부 500 + ERROR 로그(스택트레이스 48줄)** 인 것을 발견했다.
+> Phase 2 이후 줄곧 그랬고, 테스트가 전부 **실재하는 경로만** 호출해서 드러나지 않았다.
+> 별도 커밋으로 교정하고 테스트 4건으로 고정했다.
+>
+> **Phase 6 대조군은 `phase5-operations`다.** AOP 로깅·MDC·Auditing이 요청당 상시 비용을
+> 더한다 — 주문 조회 4.1ms → 5.3ms (+29%). `phase3-performance`를 쓰면 운영 계측 비용이
+> 튜닝 효과에 섞인다 (`REVIEW.md` "Phase 6 대조군 판단").
 
 ## Phase 6 — 성능 측정 (k6)
 
@@ -148,6 +161,7 @@
 - [ ] 스트레스 테스트 — 한계점 탐색
 - [ ] 스파이크 테스트
 - [ ] 동시 주문 정합성 시나리오
+- [ ] **HA 다중 인스턴스** (Phase 5에서 이월) — app 2개 + 로드밸런서, 무상태 검증
 - [ ] **개선 전(Phase 0 커밋) vs 개선 후 비교표**
       운영과 같은 DB 엔진(PostgreSQL)이므로 병목의 **성격**은 그대로 논할 수 있다.
       다만 절대 수치는 측정 머신·컨테이너 자원에 좌우되므로, **같은 머신·같은 compose 설정**에서
