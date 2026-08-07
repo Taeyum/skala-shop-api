@@ -107,9 +107,12 @@ public class CustomerService {
 
 	// 본인 확인이 없다 — 남의 계정도 고칠 수 있다 (BOLA). Phase 2에서 방어
 	public Response<Customer> updateCustomer(Customer request) {
-		// 자료의 "customerPoint 유효성 체크". 음수 포인트가 그대로 저장되면 잔액 불변식이 깨진다
+		// 자료(인쇄 551)는 customerId 존재 확인과 customerPoint 유효성을 한 줄에 묶어
+		// 둘 다 DATA_NOT_FOUND로 적었다. 검증 실패에 "데이터를 찾을 수 없음"은 의미가 맞지 않지만,
+		// 그 부정확함 자체가 Phase 2 "Error → HTTP 매핑"의 개선 대상이므로 기준점에서는 자료를 따른다.
+		// 지금 고치면 Phase 2가 매핑만 붙이는 작업이 되고 개선 전/후가 사라진다 (DECISIONS.md 10절)
 		if (request.getCustomerPoint() != null && request.getCustomerPoint() < 0) {
-			throw new ParameterException("customerPoint");
+			throw new ResponseException(Error.DATA_NOT_FOUND, "invalid customerPoint");
 		}
 		Customer customer = findCustomer(request.getCustomerId());
 		if (request.getCustomerPassword() != null) {
