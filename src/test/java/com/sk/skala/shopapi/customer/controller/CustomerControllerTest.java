@@ -6,6 +6,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -22,7 +24,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+
 import com.sk.skala.shopapi.customer.dto.CustomerResponse;
+import com.sk.skala.shopapi.global.common.PagedList;
 import com.sk.skala.shopapi.customer.service.CustomerService;
 import com.sk.skala.shopapi.global.auth.SessionHandler;
 import com.sk.skala.shopapi.global.exception.Error;
@@ -116,5 +121,72 @@ class CustomerControllerTest {
 								java.util.Map.of("customerId", "skala01", "customerPoint", 100))))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").value("CONCURRENT_MODIFICATION"));
+	}
+
+	// ── 본인만 허용 (SPEC 1절, BOLA 방어) ─────────────────────────────────
+
+	@Test
+	@DisplayName("수정·삭제는 남의 식별자를 보내면 403")
+	void 남의_리소스_수정_삭제는_403() throws Exception {
+		given(sessionHandler.getCustomerId()).willReturn("skala01");
+		given(customerService.updateCustomer(eq("skala01"), any()))
+				.willThrow(new ResponseException(Error.NOT_OWNER));
+		willThrow(new ResponseException(Error.NOT_OWNER))
+				.given(customerService).deleteCustomer(eq("skala01"), any());
+
+		mockMvc.perform(put("/api/customers").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"customerId\":\"skala02\",\"customerPassword\":\"pw1234\"}"))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.message").value("NOT_OWNER"));
+
+		mockMvc.perform(delete("/api/customers").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"customerId\":\"skala02\"}"))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.message").value("NOT_OWNER"));
+	}
+
+	@Test
+	@DisplayName("수정·삭제도 쿠키가 없으면 401 — Service까지 가지 않는다")
+	void 미인증_수정_삭제는_401() throws Exception {
+		willThrow(new ResponseException(Error.NOT_AUTHENTICATED)).given(sessionHandler).getCustomerId();
+
+		mockMvc.perform(put("/api/customers").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"customerId\":\"skala01\",\"customerPassword\":\"pw1234\"}"))
+				.andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/customers").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"customerId\":\"skala01\"}"))
+				.andExpect(status().isUnauthorized());
+
+		then(customerService).should(never()).updateCustomer(any(), any());
+		then(customerService).should(never()).deleteCustomer(any(), any());
+	}
+
+	@Test
+	@DisplayName("탈퇴 시 보유 상품이 있으면 409")
+	void 보유_상품이_있으면_탈퇴는_409() throws Exception {
+		given(sessionHandler.getCustomerId()).willReturn("skala01");
+		willThrow(new ResponseException(Error.DATA_IN_USE))
+				.given(customerService).deleteCustomer(eq("skala01"), any());
+
+		mockMvc.perform(delete("/api/customers").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"customerId\":\"skala01\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("DATA_IN_USE"));
+	}
+
+	@Test
+	@DisplayName("고객 목록은 인증 없이 열려 있다 — 알려진 한계를 테스트로 고정한다")
+	void 고객_목록은_인증_없이_조회된다() throws Exception {
+		// 바람직하지 않다는 것은 인지하고 있으나 올바른 해법은 역할 기반 접근 제어이고
+		// 이 프로젝트에 역할 개념이 없다 (SPEC.md 1절, REVIEW.md 한계).
+		// 이 테스트는 '괜찮다'는 뜻이 아니라 현재 계약이 무엇인지를 못 박는 것이다 —
+		// 나중에 인증을 걸면 이 테스트가 깨지면서 계약 변경임을 알려준다
+		given(customerService.getAllCustomers(0, 10))
+				.willReturn(PagedList.of(0, 0, 10, List.of()));
+
+		mockMvc.perform(get("/api/customers/list"))
+				.andExpect(status().isOk());
+
+		then(sessionHandler).should(never()).getCustomerId();
 	}
 }

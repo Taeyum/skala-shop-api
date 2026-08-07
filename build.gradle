@@ -69,7 +69,54 @@ tasks.named('test') {
     finalizedBy tasks.jacocoTestReport
 }
 
+// 커버리지 집계에서 제외하는 것들 — 제외 사유를 여기에 남긴다.
+// (Lombok 생성 메서드는 lombok.config의 addLombokGeneratedAnnotation으로 이미 빠진다)
+def jacocoExcludes = [
+        // 부트스트랩. main() 한 줄이며 검증할 분기가 없다
+        'com/sk/skala/shopapi/ShopApiApplication.class',
+        // 설정 클래스. @Bean 정의를 테스트하는 것은 스프링을 테스트하는 것이다.
+        // 이 설정들이 실제로 동작하는지는 통합 테스트(E2E·@WebMvcTest)가 검증한다
+        'com/sk/skala/shopapi/global/config/**',
+        // 요청/응답 DTO. Lombok 생성분을 빼고 나면 남는 것이 거의 없고,
+        // 필드 존재 여부(비밀번호 미노출 등)는 Controller 테스트가 JSON으로 단언한다
+        'com/sk/skala/shopapi/**/dto/**',
+]
+
 tasks.named('jacocoTestReport') {
     dependsOn tasks.test
-    reports { csv.required = true }
+    reports {
+        csv.required = true
+        xml.required = true
+    }
+    classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+        fileTree(dir: it, exclude: jacocoExcludes)
+    }))
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.jacocoTestReport
+    classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+        fileTree(dir: it, exclude: jacocoExcludes)
+    }))
+    violationRules {
+        rule {
+            // 임계치의 근거는 DECISIONS.md 16절.
+            // 요약 — 목표치가 아니라 '지금 수준에서 내려가지 않게 하는 바닥'이다.
+            // 측정 시점 실측(제외 적용 후)보다 낮게 잡아 정상적인 리팩터링이 게이트에
+            // 걸리지 않게 하되, 검증 없는 코드가 새로 들어오면 걸리도록 한다
+            limit {
+                counter = 'LINE'
+                minimum = 0.85
+            }
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+// build가 커버리지 게이트를 지나가게 한다. 리포트만 만들고 아무도 안 보면 게이트가 아니다
+tasks.named('check') {
+    dependsOn tasks.jacocoTestCoverageVerification
 }

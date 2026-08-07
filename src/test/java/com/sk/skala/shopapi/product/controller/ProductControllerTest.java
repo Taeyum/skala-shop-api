@@ -6,7 +6,9 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -92,5 +94,40 @@ class ProductControllerTest {
 						.content("{\"productName\":\"무선마우스\",\"productPrice\":15000}"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").value("DATA_DUPLICATED"));
+	}
+
+	@Test
+	@DisplayName("수정은 body의 id로 대상을 찾는다 (URI에 id가 없다 — SPEC 계약)")
+	void 수정은_바디의_id를_쓴다() throws Exception {
+		given(productService.updateProduct(any())).willReturn(
+				ProductResponse.builder().id(1L).productName("유선마우스")
+						.productPrice(new BigDecimal("9000.00")).build());
+
+		mockMvc.perform(put("/api/products").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"id\":1,\"productName\":\"유선마우스\",\"productPrice\":9000}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.body.productName").value("유선마우스"));
+	}
+
+	@Test
+	@DisplayName("주문된 상품 삭제는 409 — 참조 무결성 거부")
+	void 주문된_상품_삭제는_409() throws Exception {
+		willThrow(new ResponseException(Error.DATA_IN_USE)).given(productService).deleteProduct(any());
+
+		mockMvc.perform(delete("/api/products").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"id\":1}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("DATA_IN_USE"));
+	}
+
+	@Test
+	@DisplayName("삭제 성공은 body 없이 success")
+	void 삭제_성공() throws Exception {
+		mockMvc.perform(delete("/api/products").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"id\":1}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result").value("success"));
+
+		then(productService).should().deleteProduct(any());
 	}
 }
