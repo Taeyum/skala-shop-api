@@ -18,10 +18,23 @@
 - [x] Service 2종 (ProductService, CustomerService)
 - [x] Controller 2종
 - [x] `Response`, `PagedList`, `SessionHandler`(JWT)
-- [x] `Error` enum, 예외 3종, `GlobalExceptionHandler`
+- [x] `Error` enum, `ResponseException`·`ParameterException`, `GlobalExceptionHandler`
 - [x] `application.yml`, `data.sql` 시드
 - [x] **E2E 시나리오 전체 통과** (`SPEC.md` 5절) — curl로 6단계 + 비즈니스 규칙 8종 확인
 - [x] 커밋: `feat: 스펙 기본 구현 완료`
+
+착수 후 추가로 수행한 것 (원본 자료를 뒤늦게 발견해 생긴 작업)
+
+- [x] 강의 자료 원본 대조 — 클래스명·패키지 구조를 자료와 일치 (`data/table`·`data/dto`·`common`·`exception`)
+- [x] Service·Controller 명세 항목 단위 대조 — 메서드명 9건, 검증 2건, 반환 타입 정정
+- [x] 자료의 오류 5건 판별 및 기록 (`DECISIONS.md` 11.1)
+- [x] 자료 지침 미적용 근거를 SQL 로그로 실측 (`docs/evidence/`)
+- [x] Phase 0에서 자료를 따를지 판단하는 기준 명문화 (`DECISIONS.md` 10절)
+- [x] **이식성 검증** — 저장소 밖 클론에서 `docker compose up`만으로 기동·E2E 통과 확인
+- [x] 자체 점검 및 기준점 태그 고정 (`REVIEW.md`, 태그 `phase0-baseline`)
+
+> **기준점** — Phase 3·6의 개선 전/후 비교는 태그 **`phase0-baseline`** 을 대상으로 한다.
+> 상세는 `REVIEW.md` "Phase 0 기준점 커밋".
 
 ## Phase 1 — 구조 재설계
 
