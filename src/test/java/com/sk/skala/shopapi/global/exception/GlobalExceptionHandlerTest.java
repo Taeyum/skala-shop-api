@@ -185,6 +185,24 @@ class GlobalExceptionHandlerTest {
 		Assertions.assertThat(inBody).as("바디의 traceId가 헤더와 같아야 로그를 찾을 수 있다").contains(header);
 	}
 
+	@Test
+	@DisplayName("DB 제약 위반은 500이 아니라 409다")
+	void 제약_위반은_409() throws Exception {
+		// Phase 6 부하 측정에서 같은 (고객, 상품) 첫 주문 경합이 500 + ERROR 로그를 냈다.
+		// 제약 위반은 정의상 상태 충돌이므로 재시도 가능함을 뜻하는 409여야 한다
+		willThrow(new org.springframework.dao.DataIntegrityViolationException(
+				"duplicate key value violates unique constraint \"uk_order_items_customer_product\""))
+				.given(productService).deleteProduct(any());
+
+		mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.delete("/api/products").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"id\":1}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("CONCURRENT_MODIFICATION"))
+				// 제약 이름·테이블명이 응답에 실리면 스키마가 노출된다
+				.andExpect(content().string(Matchers.not(Matchers.containsString("uk_order_items"))));
+	}
+
 	private static String messageOf(String body) {
 		int i = body.indexOf("\"message\":\"") + 11;
 		return body.substring(i, body.indexOf('"', i));

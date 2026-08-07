@@ -42,6 +42,12 @@ services:
       # 애플리케이션은 "시크릿 없으면 못 뜬다"는 계약을 지키고,
       # 개발 편의는 실행 환경(여기)이 책임진다 — docker compose up 한 줄 실행이 유지된다
       JWT_SECRET: ${JWT_SECRET:-dev-only-do-not-use-in-production-0123456789}
+      # 성능 측정 스윕용 (docs/perf/sweep.sh).
+      # ★ 빈 문자열을 넘기지 않는다. ${VAR:-} 로 두면 환경변수가 '존재하되 빈 값'이 되고
+      #   Spring의 ${DB_POOL_SIZE:10} 기본값이 적용되지 않아 기동이 실패한다
+      #   (실제로 겪었다: "A null value cannot be assigned to a primitive type")
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
     ports:
       - "${SERVER_PORT:-8080}:8080"
 

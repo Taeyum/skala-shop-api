@@ -143,6 +143,57 @@ class ConcurrentOrderTest {
 				.isEqualTo(expected);
 	}
 
+	@Test
+	@DisplayName("★ 같은 고객·같은 상품의 첫 주문이 동시에 들어와도 500이 나지 않는다")
+	void 같은_상품_첫_주문_경합은_500이_아니다() throws Exception {
+		// Phase 6 부하 측정이 찾은 결함이다. 양쪽 모두 findByCustomerAndProduct에서 빈 결과를 받고
+		// INSERT를 시도해 복합 UNIQUE에 걸렸고, DataIntegrityViolationException이 그대로 나가
+		// **500 + ERROR 로그**가 됐다. check-then-act 경합이다.
+		//
+		// 이 테스트가 Phase 3에 없었던 이유 — 그때는 스레드마다 **서로 다른 상품**을 주문해
+		// 고객 행 경합만 남겼다. 그 설계가 정확히 이 경우를 배제했다.
+		Long sharedProductId = productIds.get(0);
+		int threads = 30;
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
+		CountDownLatch ready = new CountDownLatch(threads);
+		CountDownLatch start = new CountDownLatch(1);
+		CountDownLatch done = new CountDownLatch(threads);
+		ConcurrentHashMap<String, AtomicInteger> outcomes = new ConcurrentHashMap<>();
+
+		for (int i = 0; i < threads; i++) {
+			executor.submit(() -> {
+				ready.countDown();
+				try {
+					start.await();
+					orderService.placeOrder(customerId, orderRequest(sharedProductId, 1));
+					outcomes.computeIfAbsent("성공", k -> new AtomicInteger()).incrementAndGet();
+				} catch (Exception e) {
+					outcomes.computeIfAbsent(e.getClass().getSimpleName(), k -> new AtomicInteger())
+							.incrementAndGet();
+				} finally {
+					done.countDown();
+				}
+			});
+		}
+		assertThat(ready.await(30, TimeUnit.SECONDS)).isTrue();
+		start.countDown();
+		assertThat(done.await(120, TimeUnit.SECONDS)).isTrue();
+		executor.shutdown();
+
+		System.out.printf("%n[첫 주문 경합] %s%n%n", outcomes);
+
+		// 실패는 낙관적 락 충돌이거나 제약 위반이다. 둘 다 **409로 매핑되는 것**이어야 하고,
+		// 그 외의 예외(=500이 될 것)가 나오면 안 된다
+		assertThat(outcomes.keySet())
+				.as("500이 될 예외가 섞이면 안 된다. 실제 결과: %s", outcomes)
+				.allMatch(name -> name.equals("성공")
+						|| name.contains("OptimisticLocking")
+						|| name.contains("DataIntegrityViolation"));
+		assertThat(outcomes.getOrDefault("성공", new AtomicInteger()).get())
+				.as("최소 한 건은 성공해야 한다 — 전부 실패하면 경합이 아니라 고장이다")
+				.isGreaterThan(0);
+	}
+
 	private static OrderRequest orderRequest(Long productId, int quantity) {
 		OrderRequest request = new OrderRequest();
 		request.setProductId(productId);

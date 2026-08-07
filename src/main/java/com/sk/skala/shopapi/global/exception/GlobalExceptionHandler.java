@@ -9,6 +9,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -149,6 +150,32 @@ public class GlobalExceptionHandler {
 		log.debug("type mismatch: {}", e.getMessage());
 		// 값을 응답에 싣지 않는다 — 입력을 그대로 되비추면 그 자체가 반사 경로가 된다
 		return ResponseEntity.badRequest().body(Response.fail("invalid parameter type"));
+	}
+
+	/**
+	 * DB 제약 위반 → 409.
+	 * <p>
+	 * <b>Phase 6 부하 측정이 찾아낸 결함이다.</b> 같은 {@code (고객, 상품)} 조합의 <b>첫 주문</b>이
+	 * 동시에 들어오면 양쪽 모두 {@code findByCustomerAndProduct}에서 빈 결과를 받고 INSERT를 시도해
+	 * {@code uk_order_items_customer_product} 복합 UNIQUE에 걸린다 — 전형적인 check-then-act 경합이다.
+	 * <p>
+	 * {@code Customer}의 {@code @Version}은 이것을 막지 못한다. 다른 행이고, 게다가
+	 * {@code IDENTITY} 전략이라 {@code OrderItem} INSERT가 <b>커밋 전에 즉시 실행</b>되어
+	 * 낙관적 락 검사보다 먼저 터진다.
+	 * <p>
+	 * 제약 위반은 <b>정의상 상태 충돌</b>이므로 500이 아니라 409다 — 클라이언트가 다시 시도하면
+	 * 이번엔 기존 행을 찾아 수량 누적 경로로 간다. 서비스가 의미를 아는 경우
+	 * ({@code DATA_IN_USE})는 각 Service가 먼저 잡아 자기 코드로 변환하므로 여기까지 오지 않는다.
+	 * <p>
+	 * Phase 3의 동시성 테스트는 스레드마다 <b>서로 다른 상품</b>을 주문해 고객 행 경합만 남겼다.
+	 * 그 설계가 정확히 이 경우를 배제했고, 그래서 부하 측정 전까지 드러나지 않았다.
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<Response<Void>> handleConstraintViolation(DataIntegrityViolationException e) {
+		// 500으로 새면 그때가 진짜 문제다. 충돌 자체는 정상 동작이므로 debug
+		log.debug("constraint conflict: {}", e.getMessage());
+		return ResponseEntity.status(Error.CONCURRENT_MODIFICATION.getStatus())
+				.body(Response.fail(Error.CONCURRENT_MODIFICATION.name()));
 	}
 
 	/**

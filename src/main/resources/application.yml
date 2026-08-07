@@ -24,6 +24,12 @@ spring:
       mode: always
       encoding: UTF-8
 
+  datasource:
+    hikari:
+      # 풀 크기 — Phase 6에서 곡선을 그려 정한다. 환경변수로 여는 이유는 스윕 측정 때문이다
+      # (docs/perf/sweep.sh). 근거는 DECISIONS.md 24절
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+
   lifecycle:
     # graceful shutdown이 이 시간 안에 안 끝나면 강제 종료한다.
     # 이 API의 요청은 모두 짧아 20초면 충분하고, 길게 잡으면 배포가 그만큼 느려진다.
@@ -54,6 +60,11 @@ jwt:
 
 server:
   port: ${SERVER_PORT:8080}
+
+  tomcat:
+    threads:
+      # 워커 스레드 수 — 마찬가지로 Phase 6에서 측정 후 정한다
+      max: ${TOMCAT_MAX_THREADS:200}
 
   # 종료 신호를 받으면 새 요청은 거절하되 처리 중인 요청은 끝까지 마친다.
   # 없으면 배포·스케일인 때 진행 중이던 주문이 중간에 끊긴다 —
@@ -124,5 +135,4 @@ logging:
     # 기본 INFO 레벨이면 그 debug 로그가 출력되지 않아 메시지가 어디에도 안 남는다
     com.sk.skala.shopapi: debug
 
-# HikariCP 풀 크기는 의도적으로 기본값을 쓴다 — 근거 없는 숫자를 넣지 않는다.
-# Phase 3에서 k6 부하 측정 결과와 함께 조정한다 (PLAN.md Phase 3)
+
