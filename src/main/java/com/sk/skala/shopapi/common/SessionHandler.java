@@ -30,8 +30,10 @@ public class SessionHandler {
 
 	public static final String COOKIE_NAME = "bff-access";
 
-	// 웹 요청 컨텍스트가 Service까지 끌려들어오는 지점 — Phase 1에서 제거된다
+	// 웹 요청/응답 컨텍스트가 Service까지 끌려들어오는 지점 — Phase 1에서 제거된다.
+	// 싱글턴에 주입되지만 Spring이 요청 스코프 프록시로 바꿔준다
 	private final HttpServletRequest request;
+	private final HttpServletResponse response;
 
 	@Value("${jwt.secret}")
 	private String secret;
@@ -39,14 +41,13 @@ public class SessionHandler {
 	@Value("${jwt.expiration-ms}")
 	private long expirationMs;
 
-	public String createToken(String customerId) {
-		Date now = new Date();
-		return Jwts.builder()
-				.subject(customerId)
-				.issuedAt(now)
-				.expiration(new Date(now.getTime() + expirationMs))
-				.signWith(key())
-				.compact();
+	/** 액세스 토큰을 발급해 응답 쿠키에 실는다. */
+	public void storeAccessToken(String customerId) {
+		Cookie cookie = new Cookie(COOKIE_NAME, createToken(customerId));
+		cookie.setPath("/");
+		cookie.setMaxAge((int) (expirationMs / 1000));
+		// HttpOnly·Secure·SameSite는 Phase 2 JWT 하드닝에서 붙인다
+		response.addCookie(cookie);
 	}
 
 	/** 쿠키에서 로그인한 고객 ID를 꺼낸다. 없거나 무효하면 NOT_AUTHENTICATED. */
@@ -67,12 +68,14 @@ public class SessionHandler {
 		}
 	}
 
-	public void writeCookie(HttpServletResponse response, String token) {
-		Cookie cookie = new Cookie(COOKIE_NAME, token);
-		cookie.setPath("/");
-		cookie.setMaxAge((int) (expirationMs / 1000));
-		// HttpOnly·Secure·SameSite는 Phase 2 JWT 하드닝에서 붙인다
-		response.addCookie(cookie);
+	private String createToken(String customerId) {
+		Date now = new Date();
+		return Jwts.builder()
+				.subject(customerId)
+				.issuedAt(now)
+				.expiration(new Date(now.getTime() + expirationMs))
+				.signWith(key())
+				.compact();
 	}
 
 	private String readToken() {

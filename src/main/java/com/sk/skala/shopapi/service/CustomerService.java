@@ -8,21 +8,23 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.sk.skala.shopapi.data.table.Customer;
-import com.sk.skala.shopapi.data.dto.OrderListDto;
-import com.sk.skala.shopapi.data.table.OrderItem;
-import com.sk.skala.shopapi.data.dto.OrderRequest;
+import com.sk.skala.shopapi.common.PagedList;
+import com.sk.skala.shopapi.common.Response;
+import com.sk.skala.shopapi.common.SessionHandler;
 import com.sk.skala.shopapi.data.dto.CustomerSession;
 import com.sk.skala.shopapi.data.dto.OrderItemDto;
+import com.sk.skala.shopapi.data.dto.OrderListDto;
+import com.sk.skala.shopapi.data.dto.OrderRequest;
+import com.sk.skala.shopapi.data.table.Customer;
+import com.sk.skala.shopapi.data.table.OrderItem;
 import com.sk.skala.shopapi.data.table.Product;
+import com.sk.skala.shopapi.exception.Error;
 import com.sk.skala.shopapi.exception.ParameterException;
 import com.sk.skala.shopapi.exception.ResponseException;
 import com.sk.skala.shopapi.repository.CustomerRepository;
 import com.sk.skala.shopapi.repository.OrderItemRepository;
 import com.sk.skala.shopapi.repository.ProductRepository;
-import com.sk.skala.shopapi.exception.Error;
-import com.sk.skala.shopapi.common.PagedList;
-import com.sk.skala.shopapi.common.SessionHandler;
+import com.sk.skala.shopapi.tools.StringUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,13 +42,14 @@ public class CustomerService {
 	// 웹 계층(쿠키·JWT)이 Service까지 들어와 있다 — Phase 1에서 제거 (DECISIONS.md 5절)
 	private final SessionHandler sessionHandler;
 
-	public PagedList<Customer> getCustomers(int offset, int count) {
+	public Response<PagedList<Customer>> getAllCustomers(int offset, int count) {
 		Page<Customer> page = customerRepository.findAll(PageRequest.of(offset, count));
-		return PagedList.of(page.getTotalElements(), offset, count, page.getContent());
+		return Response.success(
+				PagedList.of(page.getTotalElements(), offset, count, page.getContent()));
 	}
 
 	@Transactional(readOnly = true)
-	public OrderListDto getCustomerOrders(String customerId) {
+	public Response<OrderListDto> getCustomerById(String customerId) {
 		Customer customer = findCustomer(customerId);
 
 		List<OrderItemDto> products = new ArrayList<>();
@@ -61,15 +64,15 @@ public class CustomerService {
 					.build());
 		}
 
-		return OrderListDto.builder()
+		return Response.success(OrderListDto.builder()
 				.customerId(customer.getCustomerId())
 				.customerPoint(customer.getCustomerPoint())
 				.products(products)
-				.build();
+				.build());
 	}
 
-	public Customer createCustomer(Customer customer) {
-		if (customer.getCustomerId() == null || customer.getCustomerPassword() == null) {
+	public Response<Customer> createCustomer(Customer customer) {
+		if (StringUtil.isAnyEmpty(customer.getCustomerId(), customer.getCustomerPassword())) {
 			throw new ParameterException("customerId, customerPassword");
 		}
 		if (customerRepository.existsById(customer.getCustomerId())) {
@@ -79,33 +82,31 @@ public class CustomerService {
 		if (customer.getCustomerPoint() == null) {
 			customer.setCustomerPoint(INITIAL_POINT);
 		}
-		return customerRepository.save(customer);
+		return Response.success(customerRepository.save(customer));
 	}
 
-	/**
-	 * 로그인 검증 후 응답용 고객 정보를 돌려준다 (비밀번호 제외).
-	 * 토큰 발급·쿠키 굽기는 Controller가 맡는다.
-	 */
-	public Customer login(CustomerSession session) {
-		if (session.getCustomerId() == null || session.getCustomerPassword() == null) {
+	public Response<Customer> loginCustomer(CustomerSession customerSession) {
+		if (StringUtil.isAnyEmpty(customerSession.getCustomerId(),
+				customerSession.getCustomerPassword())) {
 			throw new ParameterException("customerId, customerPassword");
 		}
-		Customer customer = findCustomer(session.getCustomerId());
+		Customer customer = findCustomer(customerSession.getCustomerId());
 		// 평문 비교 — BCrypt 해싱은 Phase 2
-		if (!customer.getCustomerPassword().equals(session.getCustomerPassword())) {
+		if (!customer.getCustomerPassword().equals(customerSession.getCustomerPassword())) {
 			throw new ResponseException(Error.NOT_AUTHENTICATED);
 		}
+		sessionHandler.storeAccessToken(customer.getCustomerId());
 
 		// 조회한 엔티티의 비밀번호를 지워서 반환하면, 영속성 컨텍스트가 열려 있을 때
 		// 더티 체킹으로 DB의 비밀번호까지 날아간다. 응답 전용 복사본을 만든다
 		Customer result = new Customer();
 		result.setCustomerId(customer.getCustomerId());
 		result.setCustomerPoint(customer.getCustomerPoint());
-		return result;
+		return Response.success(result);
 	}
 
 	// 본인 확인이 없다 — 남의 계정도 고칠 수 있다 (BOLA). Phase 2에서 방어
-	public Customer updateCustomer(Customer request) {
+	public Response<Customer> updateCustomer(Customer request) {
 		Customer customer = findCustomer(request.getCustomerId());
 		if (request.getCustomerPassword() != null) {
 			customer.setCustomerPassword(request.getCustomerPassword());
@@ -113,24 +114,25 @@ public class CustomerService {
 		if (request.getCustomerPoint() != null) {
 			customer.setCustomerPoint(request.getCustomerPoint());
 		}
-		return customerRepository.save(customer);
+		return Response.success(customerRepository.save(customer));
 	}
 
-	public void deleteCustomer(Customer request) {
+	public Response<Void> deleteCustomer(Customer request) {
 		// 주문 내역이 남아 있으면 FK 제약에 걸린다 — 참조 무결성 정책은 Phase 2에서 정한다
 		customerRepository.delete(findCustomer(request.getCustomerId()));
+		return Response.success();
 	}
 
 	@Transactional
-	public void order(OrderRequest request) {
+	public Response<Void> placeOrder(OrderRequest order) {
 		String customerId = sessionHandler.getCustomerId();
-		validate(request);
+		validate(order);
 
 		Customer customer = findCustomer(customerId);
-		Product product = findProduct(request.getProductId());
+		Product product = findProduct(order.getProductId());
 
 		// 수량이 음수여도 막지 않는다 — 포인트가 늘어난다. Phase 2에서 @Positive로 차단
-		double total = product.getProductPrice() * request.getQuantity();
+		double total = product.getProductPrice() * order.getQuantity();
 		if (customer.getCustomerPoint() < total) {
 			throw new ResponseException(Error.INSUFFICIENT_FUNDS);
 		}
@@ -142,44 +144,46 @@ public class CustomerService {
 			item = new OrderItem();
 			item.setCustomer(customer);
 			item.setProduct(product);
-			item.setQuantity(request.getQuantity());
+			item.setQuantity(order.getQuantity());
 		} else {
 			// 재주문은 신규 행이 아니라 수량 누적 — 고객당 상품 1행 불변식
-			item.setQuantity(item.getQuantity() + request.getQuantity());
+			item.setQuantity(item.getQuantity() + order.getQuantity());
 		}
 		orderItemRepository.save(item);
+		return Response.success();
 	}
 
 	@Transactional
-	public void cancel(OrderRequest request) {
+	public Response<Void> cancelOrder(OrderRequest order) {
 		String customerId = sessionHandler.getCustomerId();
-		validate(request);
+		validate(order);
 
 		Customer customer = findCustomer(customerId);
-		Product product = findProduct(request.getProductId());
+		Product product = findProduct(order.getProductId());
 
 		OrderItem item = orderItemRepository.findByCustomerAndProduct(customer, product)
 				.orElseThrow(() -> new ResponseException(Error.DATA_NOT_FOUND));
-		if (item.getQuantity() < request.getQuantity()) {
+		if (item.getQuantity() < order.getQuantity()) {
 			throw new ResponseException(Error.INSUFFICIENT_QUANTITY);
 		}
 
 		// 주문 당시가 아니라 '현재' 가격으로 환불한다 — 가격이 바뀌면 원금을 넘길 수 있다.
 		// Phase 1에서 orderedPrice 스냅샷으로 교정 (DECISIONS.md 2절)
-		double refund = product.getProductPrice() * request.getQuantity();
+		double refund = product.getProductPrice() * order.getQuantity();
 		customer.setCustomerPoint(customer.getCustomerPoint() + refund);
 
-		int remain = item.getQuantity() - request.getQuantity();
+		int remain = item.getQuantity() - order.getQuantity();
 		if (remain == 0) {
 			orderItemRepository.delete(item);
 		} else {
 			item.setQuantity(remain);
 			orderItemRepository.save(item);
 		}
+		return Response.success();
 	}
 
-	private void validate(OrderRequest request) {
-		if (request.getProductId() == null || request.getQuantity() == null) {
+	private void validate(OrderRequest order) {
+		if (order.getProductId() == null || order.getQuantity() == null) {
 			throw new ParameterException("productId, quantity");
 		}
 	}
