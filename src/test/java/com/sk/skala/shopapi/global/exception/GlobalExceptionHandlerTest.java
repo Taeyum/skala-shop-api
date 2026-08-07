@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.assertj.core.api.Assertions;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.sk.skala.shopapi.global.auth.SessionHandler;
+import com.sk.skala.shopapi.global.logging.TraceIdFilter;
 import com.sk.skala.shopapi.product.controller.ProductController;
 import com.sk.skala.shopapi.product.service.ProductService;
 
@@ -89,7 +91,7 @@ class GlobalExceptionHandlerTest {
 		String second = messageOf(mockMvc.perform(get("/api/products/2"))
 				.andExpect(status().isInternalServerError()).andReturn().getResponse().getContentAsString());
 
-		org.assertj.core.api.Assertions.assertThat(first)
+		Assertions.assertThat(first)
 				.as("고정 문자열이면 여러 사고를 로그에서 구별할 수 없다")
 				.isNotEqualTo(second);
 	}
@@ -163,6 +165,24 @@ class GlobalExceptionHandlerTest {
 				.andExpect(jsonPath("$.message").value("invalid parameter type"))
 				// 들어온 값을 그대로 되돌려주지 않는다
 				.andExpect(content().string(Matchers.not(Matchers.containsString("abc"))));
+	}
+
+	@Test
+	@DisplayName("500 응답의 traceId가 응답 헤더의 traceId와 같다")
+	void 응답_바디와_헤더의_traceId가_일치한다() throws Exception {
+		// 사용자가 화면에서 본 값으로 로그를 찾을 수 있어야 한다.
+		// 핸들러가 traceId를 새로 만들면 헤더(필터가 넣은 값)와 어긋나 추적이 끊긴다
+		given(productService.getProductById(any())).willThrow(new RuntimeException("boom"));
+
+		var result = mockMvc.perform(get("/api/products/1"))
+				.andExpect(status().isInternalServerError())
+				.andReturn();
+
+		String header = result.getResponse().getHeader(TraceIdFilter.HEADER);
+		String inBody = messageOf(result.getResponse().getContentAsString());
+
+		Assertions.assertThat(header).as("필터가 모든 응답에 traceId를 붙인다").isNotBlank();
+		Assertions.assertThat(inBody).as("바디의 traceId가 헤더와 같아야 로그를 찾을 수 있다").contains(header);
 	}
 
 	private static String messageOf(String body) {

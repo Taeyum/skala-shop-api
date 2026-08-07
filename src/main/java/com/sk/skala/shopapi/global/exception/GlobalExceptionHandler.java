@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.sk.skala.shopapi.global.common.Response;
+import com.sk.skala.shopapi.global.logging.TraceIdFilter;
 
 /**
  * 예외를 SPEC.md 4절의 HTTP 상태로 매핑한다.
@@ -156,7 +157,13 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Response<Void>> handleUnexpected(Exception e) {
-		String traceId = UUID.randomUUID().toString().substring(0, 8);
+		// 필터가 MDC에 넣어둔 값을 그대로 쓴다 — 응답의 traceId와 로그의 traceId가 같아야
+		// 사용자가 알려준 값으로 로그를 찾을 수 있다. 여기서 새로 만들면 둘이 어긋난다.
+		// 필터 밖에서 호출되는 경우(테스트·스케줄러)를 위해 없으면 즉석에서 만든다
+		String traceId = TraceIdFilter.current();
+		if (traceId == null) {
+			traceId = UUID.randomUUID().toString().substring(0, 8);
+		}
 		log.error("unexpected error [traceId={}]", traceId, e);
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 				.body(Response.fail("internal server error (traceId: " + traceId + ")"));

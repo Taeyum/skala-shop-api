@@ -65,6 +65,11 @@ springdoc:
     operations-sorter: method
 
 logging:
+  # traceId를 모든 로그 줄에 붙인다. 동시 요청이 섞여도 한 요청의 로그를 모을 수 있다.
+  # MDC에 값이 없으면(스케줄러·기동 로그) 빈 문자열이 되도록 기본값을 준다
+  pattern:
+    level: "%5p [%X{traceId:-}]"
+
   level:
     # 실행되는 SQL 자체. N+1은 "쿼리가 몇 번 나갔는가"의 문제라 이 로그가 유일한 1차 증거다.
     # format_sql: true 와 함께 봐야 읽힌다 (Phase 3 개선 전/후 캡처 → docs/evidence/)
