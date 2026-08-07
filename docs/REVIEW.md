@@ -156,7 +156,7 @@ Phase 0 커밋 이후 원본 자료를 발견해 **항목 단위 대조**를 별
 | **오프라인 환경에서 이미지 빌드 실패** — `Dockerfile`이 빌드 단계에서 `./gradlew dependencies`·`bootJar`를 돌려 Gradle 의존성을 새로 내려받는다. 인터넷이 없으면 `docker compose up`이 빌드에서 멈춘다 | 5 (운영·배포) |
 | **채점 환경이 폐쇄망이면 실행 불가** — 위와 같은 원인. 베이스 이미지(`postgres:16-alpine`, `eclipse-temurin`) 풀도 레지스트리 접근이 필요하다. 대응은 사전 빌드된 이미지 배포·오프라인 의존성 캐시 동봉·jar 직접 제출 등이 있으나 **채점 환경을 모르는 상태에서 미리 대응하는 것은 근거 없는 대비**다. Phase 5에서 배포 방식을 정할 때 함께 판단한다 | 5 (운영·배포) |
 
-### Phase 1 진행 중 — 절대 규칙 해소 현황 (2026-08-07)
+### Phase 1 진행 중 — 절대 규칙 해소 현황 (2026-08-07, 7단계에서 완료)
 
 Phase 0 점검에서 **5개 전부 미준수**로 기록했던 항목의 현재 상태다.
 (위 Phase 0 기록은 그 시점의 사실이므로 수정하지 않는다. 정식 Phase 1 자체 점검은 7단계 완료 후 수행한다.)
@@ -167,7 +167,7 @@ Phase 0 점검에서 **5개 전부 미준수**로 기록했던 항목의 현재 
 | Controller에 엔티티가 노출되지 않았는가 | ✅ 해소 (4단계) | 요청·응답 모두 DTO. `@RequestBody Product`·`Customer` 제거 |
 | Service가 웹 타입에 의존하지 않는가 | ✅ 해소 (6단계) | `@LoginCustomer` ArgumentResolver로 이동. Service import에 `jakarta.servlet`·`springframework.web`·공통 `Response` 없음 |
 | 금액이 전부 BigDecimal인가 | ✅ 해소 (3단계) | `@Column(precision=19, scale=2)`. 비교는 `compareTo`, 생성은 문자열 생성자 |
-| 도메인 간 Repository 직접 참조가 없는가 | ⏳ 미해소 | `CustomerService`가 `ProductRepository`를 여전히 주입한다. **7단계 도메인 패키지 재배치에서 `ProductService` 경유로 바꾼다** |
+| 도메인 간 Repository 직접 참조가 없는가 | ✅ 해소 (7단계) | `OrderService` 분리. 각 Service가 자기 Repository만 의존한다 |
 
 ### Phase 0 기준점 커밋
 
@@ -194,3 +194,81 @@ git diff phase0-baseline..HEAD     # 이후 변경 전체
 - 개선 대상 결함이 **의도적으로 보존된 상태** (Double 금액, 자연키 PK, 엔티티 노출,
   현재가 환불, N+1, 락 없음, HTTP 200 응답)
 - 클론 후 `docker compose up`만으로 기동 확인
+
+---
+
+## Phase 1 — 2026-08-07
+
+### 계약 준수
+- [x] SPEC.md의 URI·JSON 필드가 변경되지 않았는가
+      8개 엔드포인트 URI·메서드 그대로. 요청/응답 필드명 그대로.
+      **값 표기만 바뀌었다** — 금액이 `BigDecimal(scale=2)`이 되어 `1000000.0` → `1000000.00`.
+      필드명이 아니라 값 표기이고 숫자로 파싱하면 동일하다 (DECISIONS.md 3절)
+- [x] E2E 시나리오(SPEC.md 5절)가 여전히 통과하는가
+      단계마다 21개 항목(6단계 + 회귀 15종)을 돌렸고 7단계 후에도 전부 통과
+
+### 절대 규칙 — 5개 전부 준수
+
+Phase 0에서 **5개 전부 미준수**였던 것이 모두 해소됐다.
+
+- [x] 엔티티에 public setter가 없는가 — `@Setter` 제거, `@NoArgsConstructor(PROTECTED)`. 엔티티 3종 setter 0개
+- [x] Controller에 엔티티가 노출되지 않았는가 — 요청·응답 모두 DTO
+- [x] 도메인 간 Repository 직접 참조가 없는가 — `OrderService` 분리. 각 Service가 자기 Repository만 의존
+- [x] Service가 웹 타입에 의존하지 않는가 — `@LoginCustomer` ArgumentResolver.
+      Service import에 `jakarta.servlet`·`springframework.web`·공통 `Response` 없음
+- [x] 금액이 전부 BigDecimal인가 — `@Column(precision=19, scale=2)`, 비교는 `compareTo`,
+      생성은 문자열 생성자
+
+### 품질
+- [x] `./gradlew build` 통과
+- [x] 스펙 이탈 항목이 DECISIONS.md에 기록됐는가 — 1·2·3·4·5절 갱신·신설
+- [x] 근거 없는 설정값이 남아 있지 않은가 — HikariCP·Tomcat 기본값 유지 (Phase 3에서 측정 후 조정)
+
+### Phase 1로 표시했던 문제 대조
+
+| 문제 (Phase 0 점검 시점) | 상태 |
+|---|---|
+| 취소 환불이 주문 시점이 아닌 현재 가격 기준 | ✅ 해소 (2단계). 실측 확인 — 개선 전 1,020,000(원금 초과) → 개선 후 985,000 |
+| 가입 시 `customerPoint` 지정 가능 (Mass Assignment) | ✅ 해소 (4단계). `CustomerRequest`에 필드가 없다 |
+| 목록 조회 응답에 비밀번호 노출 | ✅ 해소 (4단계). `CustomerResponse`에 필드가 없다 |
+
+### Phase 1에서 새로 확인한 것
+
+- **E2E가 검출하지 못하던 결함을 별도 시나리오로 잡았다** — 주문 → 가격 변경 → 취소.
+  Phase 0 점검에서 지적했던 사각지대이며, 개선 전/후를 각각 실측해 기록했다 (DECISIONS.md 2절)
+- **반올림 경계 검증을 추가했다** — 85,000을 7개에 결제(÷7 나눠떨어지지 않음) 후 1개씩 7회 취소 →
+  원금 정확히 복귀. 3·5·7단계에서 각각 재확인했다
+- **검증 스크립트 자체의 결함을 발견하고 영향 범위를 재검증했다** — 별도 커밋 `76f0fbd`.
+  과거 커밋 5개를 다시 돌려 `phase0-baseline` 포함 전부 18/18 통과를 확인했다
+
+### 발견한 문제
+
+Phase 1에서 새로 생긴 문제는 없다. 아래는 Phase 0에서 이월된 것 중 아직 남은 항목이다.
+
+| 문제 | 처리 Phase |
+|---|---|
+| `jwt.secret` 평문 커밋 · 쿠키 플래그 없음 · 비밀번호 평문 저장 | 2 |
+| BOLA (`PUT`/`DELETE`에 본인 확인 없음) | 2 |
+| `quantity` 음수 검증 없음 | 2 |
+| 비즈니스 예외가 전부 HTTP 200 · 음수 포인트 검증이 `DATA_NOT_FOUND` | 2 |
+| 고객 삭제 시 FK 제약 위반 | 2 |
+| `loginCustomer`의 `isAnyEmpty`가 Service에 남아 있음 (요청 형태 검사) | 2 (Bean Validation) |
+| N+1 · 락 없음 | 3 |
+| `offset` 해석 미확정 | 외부 확인 대기 |
+| 테스트 코드 없음 | 4 |
+| 오프라인·폐쇄망 실행 불가 | 5 |
+
+### Phase 1 완료 커밋
+
+**태그: `phase1-structure`**
+
+Phase 3(N+1·락)·Phase 6(성능) 비교에서 기준선이 **둘** 필요하다.
+
+| 기준선 | 의미 |
+|---|---|
+| `phase0-baseline` | 스펙 그대로. 개선 전 원점 |
+| `phase1-structure` | 구조 재설계 완료. **성능 개선의 직전 상태** |
+
+Phase 3의 N+1·락 개선은 이 구조 위에서 이뤄지므로, 성능 비교의 직접 대조군은 `phase1-structure`다.
+`phase0-baseline`과의 비교는 "구조 재설계가 성능에 미친 영향"을 별도로 보여준다 —
+두 기준선을 나눠야 **구조 변경 효과와 성능 최적화 효과가 섞이지 않는다.**

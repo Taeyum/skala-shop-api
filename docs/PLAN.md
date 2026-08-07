@@ -38,20 +38,28 @@
 
 ## Phase 1 — 구조 재설계
 
-- [ ] 도메인 기준 패키지로 재배치 (product / customer / order / global)
-- [ ] `Customer` 대리키 전환 — PK `Long id`, `customerId`는 UNIQUE NOT NULL
-- [ ] `OrderItem`에 `orderedPrice` 추가 (주문 시점 가격 스냅샷)
-- [ ] `(customer_id, product_id)` 복합 UNIQUE 제약
-- [ ] `BigDecimal` 전환 (`@Column(precision=19, scale=2)`)
-- [ ] Request/Response DTO 분리 — 엔티티 노출 제거
-- [ ] 풍부한 도메인 모델 — setter 제거, 정적 팩토리, 행위 메서드
-- [ ] `@LoginCustomer` ArgumentResolver — Service에서 SessionHandler 제거
+> **순서** — 항목 간 의존이 있어 아래 순서로 진행했다. 각 단계마다 E2E 21건을 돌리고 커밋했다.
+
+- [x] `Customer` 대리키 전환 — PK `Long id`, `customerId`는 UNIQUE NOT NULL *(1단계)*
+- [x] `OrderItem`에 결제 총액 스냅샷(`orderedAmount`) 추가 + `(customer_id, product_id)` 복합 UNIQUE *(2단계)*
+      단가가 아니라 총액인 이유는 `DECISIONS.md` 2절
+- [x] `BigDecimal` 전환 (`@Column(precision=19, scale=2)`) *(3단계)*
+- [x] Request/Response DTO 분리 — 엔티티 노출 제거 *(4단계)*
+- [x] 풍부한 도메인 모델 — setter 제거, 정적 팩토리, 행위 메서드 *(5단계)*
+- [x] `@LoginCustomer` ArgumentResolver — Service에서 SessionHandler 제거 *(6단계)*
+      Service의 `Response` 반환도 제거했다
+- [x] 도메인 기준 패키지로 재배치 (product / customer / order / global) *(7단계)*
+- [x] 도메인 간 Repository 직접 참조 제거 — `OrderService` 분리 *(7단계)*
+
+> **기준선** — Phase 3·6의 성능 비교는 태그 **`phase1-structure`** 를 직접 대조군으로 쓴다.
+> `phase0-baseline`과의 비교는 구조 재설계가 성능에 미친 영향을 별도로 보여준다.
+> 상세는 `REVIEW.md` "Phase 1 완료 커밋".
 
 ## Phase 2 — 보안 · 검증
 
 - [ ] BCrypt 비밀번호 해싱 (`spring-security-crypto`)
-- [ ] Mass Assignment 차단 — 가입 시 포인트 서버 고정
-- [ ] 비밀번호 전 구간 차단 (응답 DTO + `@JsonIgnore` 이중 방어)
+- [x] ~~Mass Assignment 차단 — 가입 시 포인트 서버 고정~~ **Phase 1 4단계에서 해소** (`CustomerRequest`에 필드 없음)
+- [ ] 비밀번호 전 구간 차단 — 응답 DTO는 Phase 1 4단계에서 완료. **남은 것은 `@JsonIgnore` 이중 방어**
 - [ ] BOLA 방어 — 본인 리소스만 수정/삭제 (403)
 - [ ] Bean Validation (`@NotBlank`, `@Positive`, `@Valid`)
 - [ ] Error → HTTP 상태 매핑
