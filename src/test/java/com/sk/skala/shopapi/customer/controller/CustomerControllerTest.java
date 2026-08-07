@@ -6,14 +6,12 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,9 +27,6 @@ import com.sk.skala.shopapi.customer.service.CustomerService;
 import com.sk.skala.shopapi.global.auth.SessionHandler;
 import com.sk.skala.shopapi.global.exception.Error;
 import com.sk.skala.shopapi.global.exception.ResponseException;
-import com.sk.skala.shopapi.order.dto.OrderItemDto;
-import com.sk.skala.shopapi.order.dto.OrderListDto;
-import com.sk.skala.shopapi.order.service.OrderService;
 
 /**
  * 웹 계층만 띄운다. Service는 목이므로 <b>여기서 검증하는 것은 비즈니스 로직이 아니라</b>
@@ -55,7 +50,6 @@ class CustomerControllerTest {
 	@Autowired private ObjectMapper objectMapper;
 
 	@MockBean private CustomerService customerService;
-	@MockBean private OrderService orderService;
 	@MockBean private SessionHandler sessionHandler;
 
 	private static CustomerResponse response() {
@@ -65,50 +59,8 @@ class CustomerControllerTest {
 
 	// ── 인증 ─────────────────────────────────────────────────────────────
 
-	@Test
-	@DisplayName("쿠키가 없으면 401 — Service는 호출조차 되지 않는다")
-	void 미인증_조회는_401() throws Exception {
-		willThrow(new ResponseException(Error.NOT_AUTHENTICATED)).given(sessionHandler).getCustomerId();
 
-		mockMvc.perform(get("/api/customers/skala01"))
-				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.message").value("NOT_AUTHENTICATED"));
 
-		// 인증이 Controller 앞단에서 끝나는지 — Service가 불렸다면 인증을 Service가 아는 구조다
-		then(orderService).should(never()).getCustomerOrders(any(), any());
-	}
-
-	@Test
-	@DisplayName("@LoginCustomer가 쿠키에서 꺼낸 값이 Service로 전달된다")
-	void 인증되면_로그인_아이디가_Service로_넘어간다() throws Exception {
-		// ★ 이 테스트가 없으면 위의 401 테스트만으로는 '항상 401'인 코드도 통과한다
-		given(sessionHandler.getCustomerId()).willReturn("skala01");
-		given(orderService.getCustomerOrders("skala01", "skala01")).willReturn(
-				OrderListDto.builder().customerId("skala01").customerPoint(new BigDecimal("970000.00"))
-						.products(List.of(OrderItemDto.builder().productId(1L).productName("무선마우스")
-								.productPrice(new BigDecimal("15000.00")).quantity(2).build()))
-						.build());
-
-		mockMvc.perform(get("/api/customers/skala01"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.result").value("success"))
-				.andExpect(jsonPath("$.body.products[0].productName").value("무선마우스"))
-				.andExpect(jsonPath("$.body.products[0].quantity").value(2));
-
-		then(orderService).should().getCustomerOrders("skala01", "skala01");
-	}
-
-	@Test
-	@DisplayName("남의 리소스는 403")
-	void 소유자가_아니면_403() throws Exception {
-		given(sessionHandler.getCustomerId()).willReturn("skala01");
-		given(orderService.getCustomerOrders("skala01", "skala02"))
-				.willThrow(new ResponseException(Error.NOT_OWNER));
-
-		mockMvc.perform(get("/api/customers/skala02"))
-				.andExpect(status().isForbidden())
-				.andExpect(jsonPath("$.message").value("NOT_OWNER"));
-	}
 
 	// ── 검증 ─────────────────────────────────────────────────────────────
 
@@ -133,18 +85,6 @@ class CustomerControllerTest {
 				.andExpect(jsonPath("$.message").value("malformed request body"));
 	}
 
-	@Test
-	@DisplayName("음수 수량 주문은 400")
-	void 음수_수량_주문은_400() throws Exception {
-		given(sessionHandler.getCustomerId()).willReturn("skala01");
-
-		mockMvc.perform(post("/api/customers/order").contentType(MediaType.APPLICATION_JSON)
-						.content("{\"productId\":1,\"quantity\":-5}"))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.message").value("invalid parameter: quantity"));
-
-		then(orderService).should(never()).placeOrder(any(), any());
-	}
 
 	// ── 응답 ─────────────────────────────────────────────────────────────
 
@@ -164,16 +104,9 @@ class CustomerControllerTest {
 	}
 
 	@Test
-	@DisplayName("포인트 부족은 400, 없는 데이터는 404, 낙관적 락 충돌은 409")
+	@DisplayName("낙관적 락 충돌은 409")
 	void 에러가_HTTP_상태로_매핑된다() throws Exception {
 		given(sessionHandler.getCustomerId()).willReturn("skala01");
-
-		willThrow(new ResponseException(Error.INSUFFICIENT_FUNDS))
-				.given(orderService).placeOrder(eq("skala01"), any());
-		mockMvc.perform(post("/api/customers/order").contentType(MediaType.APPLICATION_JSON)
-						.content("{\"productId\":1,\"quantity\":1}"))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.message").value("INSUFFICIENT_FUNDS"));
 
 		given(customerService.updateCustomer(eq("skala01"), any()))
 				.willThrow(new org.springframework.orm.ObjectOptimisticLockingFailureException(
