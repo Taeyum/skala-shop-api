@@ -17,6 +17,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,6 +49,22 @@ public class Customer {
 
 	@Column(nullable = false, precision = 19, scale = 2)
 	private BigDecimal customerPoint;
+
+	/**
+	 * 낙관적 락. 읽은 뒤 커밋할 때까지 다른 트랜잭션이 이 행을 고쳤으면 커밋이 거부된다.
+	 * <p>
+	 * 없을 때 실제로 무슨 일이 일어났는지 — 동시 주문 100건에서 <b>차감 88건이 증발했다.</b>
+	 * 예외는 한 건도 나지 않았고 애플리케이션은 100건 전부 성공으로 보고했다
+	 * ({@code docs/evidence/lost-update.md}).
+	 * <p>
+	 * {@code usePoint}가 잔액을 스스로 검사하지만 그 검사는 <b>자기가 읽은 값</b>에 대한 것이다.
+	 * 불변식을 엔티티에 넣는 것과 동시 수정을 막는 것은 <b>다른 문제</b>이고, 후자는 DB가 판단해야 한다.
+	 * <p>
+	 * {@code Product}에는 붙이지 않았다 — 재고 개념이 없어 동시에 갱신되는 필드가 없다.
+	 * 근거 없이 모든 엔티티에 붙이면 충돌하지 않을 곳에서 실패율만 올린다 (DECISIONS.md 14절).
+	 */
+	@Version
+	private Long version;
 
 	/** {@code encodedPassword}는 이미 해싱된 값이어야 한다. 해싱은 호출 전에 끝낸다. */
 	public static Customer register(String customerId, String encodedPassword, BigDecimal initialPoint) {

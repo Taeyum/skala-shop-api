@@ -32,6 +32,14 @@ public enum Error {
 	INSUFFICIENT_FUNDS(HttpStatus.BAD_REQUEST, "insufficient funds"),
 	INSUFFICIENT_QUANTITY(HttpStatus.BAD_REQUEST, "insufficient quantity"),
 
+	/**
+	 * 낙관적 락 충돌 — 내가 읽은 뒤 다른 요청이 같은 행을 고쳤다. 409 (SPEC.md 4절)
+	 * <p>
+	 * 요청 자체는 올바르고 <b>현재 상태와 충돌</b>한다는 점에서 {@code DATA_IN_USE}와 같은 부류다.
+	 * 클라이언트가 <b>다시 시도하면 성공할 수 있다</b>는 뜻이므로 400(고쳐야 할 요청)이 아니다.
+	 */
+	CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "modified by another request, retry"),
+
 	/** 인증 실패 — <b>누구인지</b> 확인되지 않았다. 401 */
 	NOT_AUTHENTICATED(HttpStatus.UNAUTHORIZED, "not authenticated"),
 

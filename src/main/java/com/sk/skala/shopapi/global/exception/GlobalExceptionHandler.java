@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -71,6 +72,24 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Response<Void>> handleUnreadable(HttpMessageNotReadableException e) {
 		log.debug("malformed request body: {}", e.getMessage());
 		return ResponseEntity.badRequest().body(Response.fail("malformed request body"));
+	}
+
+	/**
+	 * 낙관적 락 충돌 → 409.
+	 * <p>
+	 * 이 핸들러가 없으면 아래 일반 핸들러로 떨어져 <b>정상적인 동시성 제어가 500으로 나간다.</b>
+	 * 500은 "서버가 잘못했다"는 뜻이라 클라이언트가 재시도해도 될지 알 수 없다.
+	 * 409는 <b>다시 시도하면 성공할 수 있다</b>는 정보를 준다 — 락을 거는 것과 충돌 이후를
+	 * 설계하는 것은 별개의 일이다.
+	 * <p>
+	 * 서버가 자동 재시도({@code @Retryable})하지 않는 이유는 DECISIONS.md 14절.
+	 */
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	public ResponseEntity<Response<Void>> handleOptimisticLock(OptimisticLockingFailureException e) {
+		// 충돌은 정상 동작이므로 error가 아니라 debug다. 500으로 새면 그때가 진짜 문제다
+		log.debug("optimistic lock conflict: {}", e.getMessage());
+		return ResponseEntity.status(Error.CONCURRENT_MODIFICATION.getStatus())
+				.body(Response.fail(Error.CONCURRENT_MODIFICATION.name()));
 	}
 
 	/**
