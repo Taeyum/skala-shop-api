@@ -1,5 +1,9 @@
 package com.sk.skala.shopapi.product.controller;
 
+import java.time.Duration;
+
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,10 +41,22 @@ public class ProductController {
 		return Response.success(productService.getAllProducts(offset, count));
 	}
 
+	/**
+	 * 상품 상세.
+	 * <p>
+	 * {@code Cache-Control: public, max-age=60} 을 붙인다 — 상품은 모두에게 같은 공개 데이터라
+	 * 중간 캐시가 보관해도 안전하다. 60초인 이유는 <b>가격 변경이 그만큼 늦게 보여도 되는가</b>로
+	 * 정했다: 이 도메인에서 가격은 자주 바뀌지 않고, 60초는 목록 새로고침 주기보다 짧다.
+	 * 더 길게 잡으면 수정 후 낡은 값이 보이는 창이 그만큼 커진다 (DECISIONS.md 25절).
+	 * <p>
+	 * 고객·주문 응답에는 붙이지 않는다 — 개인 데이터가 중간 캐시에 남는다.
+	 */
 	@Operation(summary = "상품 상세")
 	@GetMapping("/{id}")
-	public Response<ProductResponse> getProductById(@PathVariable Long id) {
-		return Response.success(productService.getProductById(id));
+	public ResponseEntity<Response<ProductResponse>> getProductById(@PathVariable Long id) {
+		return ResponseEntity.ok()
+				.cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic())
+				.body(Response.success(productService.getProductById(id)));
 	}
 
 	@Operation(summary = "상품 등록 — 요청의 id는 무시된다")

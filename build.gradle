@@ -41,6 +41,7 @@ dependencies {
 
     // health/readiness/liveness. 노출은 최소화한다 (DECISIONS.md 21절)
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
 
     // jjwt 0.12.x는 api/impl/jackson 3분할 — 구현체는 런타임에만 필요해 컴파일 의존성 오염을 막는다
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
