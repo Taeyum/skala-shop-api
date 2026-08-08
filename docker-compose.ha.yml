@@ -34,10 +34,9 @@ x-app: &app
     #   (docs/evidence/perf/ha-prediction.md, DECISIONS.md 26절)
     DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
     TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
-    # 로컬 캐시 스위치. 기본은 현재 동작(simple = ConcurrentMapCacheManager) 그대로.
-    # ★ 다중 인스턴스에서 캐시는 인스턴스마다 따로 존재해 **낡은 값을 준다**(실증됨).
-    #   즉시 회피하려면 SPRING_CACHE_TYPE=none 으로 끈다. 근거는 DECISIONS.md 25·27절.
-    SPRING_CACHE_TYPE: ${SPRING_CACHE_TYPE:-simple}
+    # (SPRING_CACHE_TYPE 스위치는 제거했다 — @Cacheable 자체를 걷어냈기 때문이다.
+    #  다중 인스턴스에서 낡은 값을 주던 결함이 사라졌으므로 회피 스위치도 필요 없다.
+    #  근거는 DECISIONS.md 25절)
   stop_grace_period: 30s
   healthcheck:
     test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]

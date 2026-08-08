@@ -79,7 +79,9 @@
 - [x] `@Version` 낙관적 락 — Lost Update 88건 증발을 먼저 실측 (`docs/evidence/lost-update.md`)
 - [x] 락 충돌 후처리 — 409 `CONCURRENT_MODIFICATION`. `@Retryable`은 넣지 않았다 (`DECISIONS.md` 14절)
 - [x] ~~`@Cacheable` + `@CacheEvict` 상품 조회 캐싱~~ **Phase 6으로 보류** →
-      **Phase 6에서 구현 완료.** ⚠️ 단 **성능 효과는 미측정** (`DECISIONS.md` 25절)
+      구현 완료 → **측정 결과 이득이 없어 제거했다** (2026-08-08).
+      상한 조건(트래픽 100%가 캐시 대상·포화)에서도 p95 효과 0, req/s는 편차 안.
+      반면 다중 인스턴스에서 **낡은 값을 무한히** 준다. 근거는 `DECISIONS.md` 25절 ⑤
 - [x] ~~HTTP 캐시 헤더 (`Cache-Control`, `ETag`)~~ **Phase 6으로 보류** →
       **Phase 6에서 구현 완료.** ⚠️ 단 **전송량 절감은 미측정** (`DECISIONS.md` 25절)
 - [ ] ~~HikariCP · Tomcat 스레드풀 튜닝~~ **Phase 6으로 보류** — k6 없이 정하면 근거 없는 숫자가 된다
@@ -171,7 +173,8 @@
 - [x] 설정 스윕 (HikariCP 풀 · Tomcat 스레드 · 반복 편차) *(계획에 없던 항목)*
 - [x] **결함 교정** — 동시 첫 주문의 제약 위반이 500으로 나가던 것을 409로 *(계획에 없던 항목)*
 - [ ] **튜닝값 확정 및 재측정** — 스윕 곡선만 있고 **기본값을 아직 바꾸지 않았다**
-- [ ] **캐시 · ETag의 성능 효과 측정** — 구현·기능 검증은 완료, 효과는 미측정
+- [x] **캐시 · ETag의 성능 효과 측정** — **ETag 전송량 −51% (유지) / `@Cacheable` 이득 없음 (제거)**
+      같은 "캐싱"이지만 아끼는 대상이 달라 판단이 갈렸다 (`DECISIONS.md` 25절)
 - [ ] `graceful shutdown` k6 재검증 (Phase 5에서 이월)
 - [x] **HA 다중 인스턴스** (Phase 5에서 이월) — app 2개 + 로드밸런서, 무상태 검증
       `docker-compose.ha.yml`(nginx + app 2 + 공유 PostgreSQL). **응용 코드 무변경.**

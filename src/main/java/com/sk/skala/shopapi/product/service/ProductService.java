@@ -1,14 +1,11 @@
 package com.sk.skala.shopapi.product.service;
 
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.sk.skala.shopapi.global.common.PagedList;
-import com.sk.skala.shopapi.global.config.CacheConfig;
 import com.sk.skala.shopapi.product.dto.ProductRequest;
 import com.sk.skala.shopapi.product.dto.ProductResponse;
 import com.sk.skala.shopapi.product.entity.Product;
@@ -35,12 +32,7 @@ public class ProductService {
 
 	/**
 	 * 개별 상품 조회 — 캐시 대상.
-	 * <p>
-	 * 반환 타입이 <b>엔티티가 아니라 DTO</b>인 것이 중요하다. 엔티티를 캐시하면
-	 * 영속성 컨텍스트 밖의 detached 인스턴스를 여러 요청이 공유하게 되어
-	 * 지연 로딩 예외나 의도치 않은 상태 공유가 생긴다.
 	 */
-	@Cacheable(cacheNames = CacheConfig.PRODUCT_CACHE, key = "#id")
 	public ProductResponse getProductById(Long id) {
 		return ProductResponse.from(findProduct(id));
 	}
@@ -55,9 +47,6 @@ public class ProductService {
 		return ProductResponse.from(productRepository.save(product));
 	}
 
-	// 수정·삭제 시 해당 키만 비운다. allEntries = true 로 전부 비우면
-	// 상품 하나 고칠 때마다 전체 캐시가 날아가 적중률이 무너진다
-	@CacheEvict(cacheNames = CacheConfig.PRODUCT_CACHE, key = "#request.id")
 	public ProductResponse updateProduct(ProductRequest request) {
 		if (request.getId() == null) {
 			throw new ParameterException("id");
@@ -67,7 +56,6 @@ public class ProductService {
 		return ProductResponse.from(productRepository.save(found));
 	}
 
-	@CacheEvict(cacheNames = CacheConfig.PRODUCT_CACHE, key = "#request.id")
 	public void deleteProduct(ProductRequest request) {
 		if (request.getId() == null) {
 			throw new ParameterException("id");
