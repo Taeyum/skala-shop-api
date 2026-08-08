@@ -1,0 +1,26 @@
+# 줄바꿈 정책.
+#
+# 기본은 "저장소에는 LF로 저장하고 체크아웃 때 플랫폼에 맞춘다"(text=auto).
+# 문서·소스는 그대로 두어도 되지만, **리눅스에서 실행되는 파일은 예외다.**
+#
+# ★ 실제로 깨졌다 (2026-08-08, Windows) —
+#   core.autocrlf=true 환경에서 gradlew 가 CRLF로 체크아웃되면 셰뱅이 `#!/bin/sh\r` 가 된다.
+#   Dockerfile 은 저장소 블롭이 아니라 **작업본을 COPY** 하므로 그 CRLF가 그대로 들어가고,
+#   리눅스 컨테이너는 `\r` 까지 인터프리터 이름으로 읽어 이렇게 죽는다:
+#
+#       /bin/sh: 1: ./gradlew: not found      (exit 127)
+#
+#   파일은 분명히 있는데 "not found" 라 원인이 보이지 않는다.
+#   `core.autocrlf` 는 머신마다 다르므로 설정이 아니라 **저장소가 강제해야** 한다.
+
+* text=auto
+
+# 리눅스/컨테이너에서 실행된다 — 작업본도 반드시 LF
+gradlew  text eol=lf
+*.sh     text eol=lf
+
+# Windows 배치는 CRLF 여야 한다
+*.bat    text eol=crlf
+
+# 바이너리는 변환 금지 (gradle-wrapper.jar 포함)
+*.jar    binary
