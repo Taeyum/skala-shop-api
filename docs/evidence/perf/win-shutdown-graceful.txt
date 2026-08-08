@@ -1,0 +1,594 @@
+# ===== graceful shutdown 측정 (graceful) =====
+# 일시   : 2026-08-08 18:39:29 +0900
+# 커밋   : 942df2d9ac27107171eec125f483fcd80955b4bf  작업트리: dirty
+# 설정   : SERVER_SHUTDOWN=graceful (환경변수 — application.yml 무변경)
+#          spring.lifecycle.timeout-per-shutdown-phase=20s, stop_grace_period=30s
+# 시나리오: cache.js THINK=0 VUS=20, 부하 중 SIGTERM(docker compose stop)
+# ===========================================
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /perf/cache.js
+        output: json (/out/win-shutdown-graceful.json)
+
+     scenarios: (100.00%) 2 scenarios, 25 max VUs, 1m20s max duration (incl. graceful stop):
+              * warmup: 5 looping VUs for 20s (exec: traffic, gracefulStop: 30s)
+              * measure: 20 looping VUs for 25s (exec: traffic, startTime: 25s, gracefulStop: 30s)
+
+
+warmup    [   2% ] 5 VUs    00.4s/20s
+
+warmup    [   7% ] 5 VUs    01.4s/20s
+
+warmup    [  12% ] 5 VUs    02.4s/20s
+
+warmup    [  17% ] 5 VUs    03.4s/20s
+
+warmup    [  22% ] 5 VUs    04.4s/20s
+
+warmup    [  27% ] 5 VUs    05.4s/20s
+
+warmup    [  32% ] 5 VUs    06.4s/20s
+
+warmup    [  37% ] 5 VUs    07.4s/20s
+
+warmup    [  42% ] 5 VUs    08.4s/20s
+
+warmup    [  47% ] 5 VUs    09.4s/20s
+
+warmup    [  52% ] 5 VUs    10.4s/20s
+
+warmup    [  57% ] 5 VUs    11.4s/20s
+
+warmup    [  62% ] 5 VUs    12.4s/20s
+
+warmup    [  67% ] 5 VUs    13.4s/20s
+
+warmup    [  72% ] 5 VUs    14.4s/20s
+
+warmup    [  77% ] 5 VUs    15.4s/20s
+
+warmup    [  82% ] 5 VUs    16.4s/20s
+
+warmup    [  87% ] 5 VUs    17.4s/20s
+
+warmup    [  92% ] 5 VUs    18.4s/20s
+
+warmup    [  97% ] 5 VUs    19.4s/20s
+
+
+
+
+
+
+measure   [   2% ] 20 VUs  00.4s/25s
+
+measure   [   6% ] 20 VUs  01.4s/25s
+
+measure   [  10% ] 20 VUs  02.4s/25s
+
+measure   [  14% ] 20 VUs  03.4s/25s
+
+measure   [  18% ] 20 VUs  04.4s/25s
+
+measure   [  22% ] 20 VUs  05.4s/25s
+
+measure   [  26% ] 20 VUs  06.4s/25s
+time="2026-08-08T09:40:02Z" level=warning msg="Request Failed" error="Get \"http://app:8080/api/products/21\": read tcp 172.18.0.4:51430->172.18.0.3:8080: read: connection reset by peer"
+time="2026-08-08T09:40:02Z" level=warning msg="연결 실패: code=1220 error=\"read: connection reset by peer\"" source=console
+time="2026-08-08T09:40:02Z" level=warning msg="Request Failed" error="Get \"http://app:8080/api/products/9\": dial tcp 172.18.0.3:8080: connect: connection refused"
+time="2026-08-08T09:40:02Z" level=warning msg="연결 실패: code=1212 error=\"dial: connection refused\"" source=console
+
+measure   [  30% ] 20 VUs  07.4s/25s
+
+measure   [  34% ] 20 VUs  08.4s/25s
+
+measure   [  38% ] 20 VUs  09.4s/25s
+
+measure   [  42% ] 20 VUs  10.4s/25s
+
+measure   [  46% ] 20 VUs  11.4s/25s
+
+measure   [  50% ] 20 VUs  12.4s/25s
+
+measure   [  54% ] 20 VUs  13.4s/25s
+
+measure   [  58% ] 20 VUs  14.4s/25s
+
+measure   [  62% ] 20 VUs  15.4s/25s
+
+measure   [  66% ] 20 VUs  16.4s/25s
+
+measure   [  70% ] 20 VUs  17.4s/25s
+
+measure   [  74% ] 20 VUs  18.4s/25s
+
+measure   [  78% ] 20 VUs  19.4s/25s
+
+measure   [  82% ] 20 VUs  20.4s/25s
+
+measure   [  86% ] 20 VUs  21.4s/25s
+
+measure   [  90% ] 20 VUs  22.4s/25s
+
+measure   [  94% ] 20 VUs  23.4s/25s
+
+measure   [  98% ] 20 VUs  24.4s/25s
+
+
+
+
+
+
+
+
+
+
+
+
+time="2026-08-08T09:40:33Z" level=warning msg="Request Failed" error="Get \"http://app:8080/api/products/9\": dial: i/o timeout"
+time="2026-08-08T09:40:33Z" level=warning msg="연결 실패: code=1211 error=\"dial: i/o timeout\"" source=console
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  █ THRESHOLDS 
+
+    checks{phase:measure}
+    ✗ 'rate>0.99' rate=88.61%
+
+    http_req_failed{phase:measure}
+    ✗ 'rate<0.01' rate=11.38%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 143820 2303.177415/s
+    checks_succeeded...: 95.73% 137684 out of 143820
+    checks_failed......: 4.26%  6136 out of 143820
+
+    ✗ 200
+      ↳  95% — ✓ 68842 / ✗ 3068
+    ✗ 상품 가격이 실려 있다
+      ↳  95% — ✓ 68842 / ✗ 3068
+
+    CUSTOM
+    resp_2xx.......................: 68862  1102.777104/s
+    resp_conn_error................: 3068   49.131889/s
+    resp_error_coded...............: 3068   49.131889/s
+    setup_requests.................: 20     0.320286/s
+
+    HTTP
+    http_req_duration..............: avg=2.98ms  min=0s       med=1.94ms p(95)=8.31ms p(99)=13.94ms max=309.86ms
+      { expected_response:true }...: avg=3.11ms  min=714.93µs med=2.04ms p(95)=8.46ms p(99)=14.11ms max=309.86ms
+    http_req_failed................: 4.26%  3068 out of 71930
+      { phase:measure }............: 11.38% 3068 out of 26943
+    http_reqs......................: 71930  1151.908994/s
+
+    EXECUTION
+    iteration_duration.............: avg=11.61ms min=158.1µs  med=2.19ms p(95)=8.86ms p(99)=14.68ms max=30s     
+    iterations.....................: 71910  1151.588707/s
+    vus............................: 20     min=0             max=20
+    vus_max........................: 25     min=25            max=25
+
+    NETWORK
+    data_received..................: 22 MB  356 kB/s
+    data_sent......................: 5.4 MB 87 kB/s
+
+
+
+
+time="2026-08-08T09:46:52Z" level=error msg="thresholds on metrics 'checks{phase:measure}, http_req_failed{phase:measure}' have been crossed"
+--- 종료 로그 확인 ---
+    app-1  | 2026-08-08T09:40:02.813Z  INFO [] 1 --- [skala-shop-api] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+    app-1  | 2026-08-08T09:40:02.879Z  INFO [] 1 --- [skala-shop-api] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+    app-1  | 2026-08-08T09:40:02.892Z  INFO [] 1 --- [skala-shop-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+--- (graceful 에서만 'Commencing graceful shutdown' 이 나와야 한다) ---
+
+=== 측정 장치 검증 (먼저 본다) ===
+  총 요청 포인트         : 71,930
+  SIGTERM 이전 완료      : 66,398
+  ★ SIGTERM 시점 인플라이트: 19
+
+=== SIGTERM 이후 종료된 요청의 결말 ===
+  status   0 :  3,068  (연결 실패/중단)
+  status 200 :  2,464  (성공)
+  합계 2xx 2,464 / 비2xx 3,068
+
+  해석 — 인플라이트가 있었으므로 이 수치는 의미를 갖는다.
+  graceful 이면 인플라이트가 2xx 로 완료되고, immediate 면 끊긴다.
+
+--- (진행률 줄 1284개 제거, 마지막 3줄만 보존) ---
+running (1m02.4s), 00/25 VUs, 71910 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure ✓ [ 100% ] 20 VUs  25s
+
+
+--- [정리] 반복된 연결 실패 경고를 유형별로 접었다 (원문 2줄씩만 보존) ---
+    connection refused           : 6068줄 (요청 기준 약 3034건 — 실패당 2줄이 남는다)
+    i/o timeout                  : 40줄 (요청 기준 약 20건 — 실패당 2줄이 남는다)
+    reset by peer                : 28줄 (요청 기준 약 14건 — 실패당 2줄이 남는다)

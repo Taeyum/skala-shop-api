@@ -48,6 +48,12 @@ services:
       #   (실제로 겪었다: "A null value cannot be assigned to a primitive type")
       DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
       TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
+      # 종료 방식. 기본값은 application.yml 과 같은 graceful 이라 동작이 바뀌지 않는다.
+      # graceful shutdown 효과 측정(docs/perf/shutdown.sh)에서 immediate 로 바꿔 대조한다.
+      # ★ 여기 선언하지 않으면 `SERVER_SHUTDOWN=x docker compose up` 을 해도
+      #   컨테이너에 전달되지 않는다 — compose 프로세스의 환경변수일 뿐이다.
+      #   실제로 그것 때문에 두 조건이 모두 graceful 로 돌아 측정이 무의미했다(2026-08-08).
+      SERVER_SHUTDOWN: ${SERVER_SHUTDOWN:-graceful}
     ports:
       - "${SERVER_PORT:-8080}:8080"
 
