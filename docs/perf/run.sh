@@ -14,6 +14,32 @@ SCRIPT=$1; NAME=$2; shift 2
 OUT="$ROOT/docs/evidence/perf"
 mkdir -p "$OUT"
 
+# ── Windows(Git Bash) 대응 ────────────────────────────────────────────────
+# MSYS는 인자로 들어온 유닉스식 경로를 Windows 경로로 자동 변환한다.
+# 그 변환이 **컨테이너 안 경로까지** 건드린다. 실측(2026-08-08):
+#     "/perf/load.js" → "C:/Program Files/Git/perf/load.js"
+#     k6: The moduleSpecifier ... couldn't be found on local disk
+# 그래서 ① 변환을 끄고 ② 호스트 경로만 Windows 형식으로 준다.
+# 리눅스·macOS 에서는 둘 다 무해하다 — 환경변수는 무시되고 hostpath()는 입력을 그대로 돌려준다.
+export MSYS_NO_PATHCONV=1
+hostpath() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) cygpath -m "$1" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+# 호스트 사양 — 측정 조건 식별용이라 OS마다 다른 명령을 순서대로 시도한다.
+# (이전 판은 sysctl 만 써서 macOS 밖에서는 빈 줄이 찍혔다)
+host_cpu() {
+  sysctl -n machdep.cpu.brand_string 2>/dev/null && return
+  grep -m1 'model name' /proc/cpuinfo 2>/dev/null | sed 's/.*: *//' && return
+  printf '%s' "${PROCESSOR_IDENTIFIER:-unknown}"
+}
+host_cores() {
+  sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || printf '%s' "${NUMBER_OF_PROCESSORS:-?}"
+}
+
 NET=$(docker inspect "$(docker compose -f "$ROOT/docker-compose.yml" ps -q app)" \
         --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
 
@@ -48,7 +74,7 @@ reset_db || exit 1
   echo "# 작업트리    : $(cd "$ROOT" && [ -z "$(git status --porcelain)" ] && echo clean || echo '수정됨(dirty)')"
   echo "# 스크립트    : $SCRIPT"
   echo "# k6 인자     : $*"
-  echo "# 호스트      : $(uname -srm) / $(sysctl -n machdep.cpu.brand_string 2>/dev/null) / 코어 $(sysctl -n hw.ncpu 2>/dev/null)"
+  echo "# 호스트      : $(uname -srm) / $(host_cpu) / 코어 $(host_cores)"
   echo "# Docker VM   : CPU $(docker info --format '{{.NCPU}}') / MEM $(( $(docker info --format '{{.MemTotal}}') / 1073741824 ))GB"
   echo "# 앱 이미지   : $(docker inspect --format '{{.Config.Image}}' "$(cd "$ROOT" && docker compose ps -q app)" 2>/dev/null)"
   echo "# DB          : $(docker inspect --format '{{.Config.Image}}' "$(cd "$ROOT" && docker compose ps -q postgres)" 2>/dev/null)"
@@ -60,7 +86,20 @@ reset_db || exit 1
 
 echo "  [측정] $SCRIPT"
 docker run --rm --network "$NET" \
-  -v "$ROOT/docs/perf:/perf:ro" -v "$OUT:/out" \
+  -v "$(hostpath "$ROOT/docs/perf"):/perf:ro" -v "$(hostpath "$OUT"):/out" \
   -e BASE=http://app:8080 "$@" \
   grafana/k6:latest run --summary-export="/out/$NAME.json" "/perf/$(basename "$SCRIPT")" \
   2>&1 | tee -a "$OUT/$NAME.txt"
+
+# ★ 측정 장치가 실제로 일했는지 확인한다.
+# k6가 스크립트를 못 찾거나 대상에 연결하지 못해도 이 스크립트는 여기까지 도달한다.
+# 그러면 "조건 헤더만 있고 수치는 없는 파일"이 남고, 목록에서는 측정된 것처럼 보인다.
+if ! grep -qE '^\s+http_reqs' "$OUT/$NAME.txt"; then
+  {
+    echo
+    echo "  ❌ k6 요약에 http_reqs 가 없다 — 측정이 성립하지 않았다."
+    echo "     빈 결과를 남기면 '측정했다'가 되므로 실패로 끝낸다."
+    echo "     원시 출력: $OUT/$NAME.txt"
+  } | tee -a "$OUT/$NAME.txt" >&2
+  exit 1
+fi

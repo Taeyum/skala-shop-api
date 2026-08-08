@@ -1,0 +1,20 @@
+# ===== 실패한 측정 (보존) =====
+# 2026-08-08. Windows/Git Bash 에서 MSYS 경로 변환이 컨테이너 안 경로를 바꿔
+# k6가 스크립트를 찾지 못했다. 그런데 sweep.sh 는 빈 값을 표에 적고 exit 0 으로 끝냈다.
+# 조치: docs/perf/{run,sweep}.sh 에 경로 변환 차단 + 파싱 실패 시 중단 추가.
+# =============================
+
+--- 당시 요약 (빈 값이 그대로 기록됐다) ---
+# ===== 스윕 측정 조건 =====
+# 일시     : 2026-08-08 15:32:43 +0900
+# 커밋     : 50cd7ef09a5ac6ffa40fec31291cc15f872fefcb
+# 변수     : DB_POOL_SIZE = 10 10 10
+# 시나리오 : load.js VUS=50 DURATION=45s (워밍업 20초 별도)
+# 각 값마다 app 재기동 → DB 초기화 → 측정
+# ==========================
+10       성공          p95                           iter 
+10       성공          p95                           iter 
+10       성공          p95                           iter 
+
+--- 당시 k6 원시 출력 ---
+time="2026-08-08T06:33:29Z" level=error msg="The moduleSpecifier \"C:/Program Files/Git/perf/load.js\" couldn't be found on local disk. Make sure that you've specified the right path to the file. If you're running k6 using the Docker image make sure you have mounted the local directory (-v /local/path/:/inside/docker/path) containing your script and modules so that they're accessible by k6 from inside of the container, see https://grafana.com/docs/k6/latest/using-k6/modules/#use-modules-with-docker."

@@ -9,6 +9,16 @@ LABEL=$1; ENVVAR=$2; shift 2
 OUT="$ROOT/docs/evidence/perf"; mkdir -p "$OUT"
 RESULT="$OUT/sweep-$LABEL.txt"
 
+# Windows(Git Bash) 대응 — 근거는 run.sh 의 같은 블록 주석 참조.
+# 요약: MSYS가 컨테이너 안 경로(/perf)까지 Windows 경로로 바꿔 k6가 스크립트를 못 찾는다.
+export MSYS_NO_PATHCONV=1
+hostpath() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) cygpath -m "$1" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 {
   echo "# ===== 스윕 측정 조건 ====="
   echo "# 일시     : $(date '+%Y-%m-%d %H:%M:%S %z')"
@@ -35,7 +45,7 @@ for VALUE in "$@"; do
   done
   NET=$(docker inspect "$(cd "$ROOT" && docker compose ps -q app)" \
           --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')
-  RAW=$(docker run --rm --network "$NET" -v "$ROOT/docs/perf:/perf:ro" \
+  RAW=$(docker run --rm --network "$NET" -v "$(hostpath "$ROOT/docs/perf"):/perf:ro" \
         -e BASE=http://app:8080 -e VUS=50 -e DURATION=45s \
         grafana/k6:latest run /perf/load.js 2>&1)
   echo "$RAW" > "$OUT/sweep-$LABEL-$VALUE.txt"
@@ -43,6 +53,20 @@ for VALUE in "$@"; do
   RPS=$(echo "$RAW" | grep -E "^\s+http_reqs" | grep -oE "[0-9.]+/s")
   OK=$(echo "$RAW"  | grep -E "checks_succeeded" | grep -oE "[0-9.]+%")
   ITER=$(echo "$RAW"| grep -E "^\s+iterations" | grep -oE "[0-9.]+/s")
+
+  # ★ 파싱이 비면 즉시 중단한다.
+  # 이전 판은 빈 값을 그대로 표에 적었다 — "10  성공   p95   iter" 같은 줄이 3개 남았고
+  # 목록만 보면 측정이 끝난 것처럼 보인다. **빈 값을 기록하면 '측정했다'가 된다.**
+  # (2026-08-08 실측: MSYS 경로 변환으로 k6가 스크립트를 못 찾았는데 exit 0 으로 끝났다)
+  if [ -z "$P95" ] || [ -z "$OK" ] || [ -z "$RPS" ]; then
+    {
+      echo "  ❌ k6 출력에서 지표를 뽑지 못했다 ($ENVVAR=$VALUE) — 측정이 성립하지 않았다."
+      echo "     원시 출력: $OUT/sweep-$LABEL-$VALUE.txt"
+    } | tee -a "$RESULT" >&2
+    echo "$RAW" | tail -5 >&2
+    exit 1
+  fi
+
   printf "%-8s 성공 %-8s p95 %-10s %-14s iter %s\n" "$VALUE" "$OK" "$P95" "$RPS" "$ITER" | tee -a "$RESULT"
 done
 echo; echo "결과: $RESULT"
