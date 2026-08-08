@@ -848,6 +848,25 @@ Phase 3에서 "측정 대상보다 측정 장치가 더 자주 틀렸다"며 4�
 | 2 | `gradlew` CRLF 셰뱅 | `core.autocrlf` |
 | 3 | MSYS 경로 변환 | 유닉스 경로 자동 변환 |
 | **4** | **동시 append 유실** | **MSYS의 `>>`가 O_APPEND 의미를 보장하지 않는다** — 자식이 자기 오프셋으로 써 내려가며 부모가 끼워 넣은 줄을 덮는다 |
+| **5** | **`bash` 가 WSL 로 잡힌다** | `cmd.exe` 에서 `bash` 를 치면 `C:\Windows\System32\bash.exe`(WSL)가 먼저 잡혀 `execvpe(/bin/bash) failed` 로 죽는다. Git Bash 는 `C:\Program Files\Git\usr\bin\bash.exe` 에 따로 있다 |
+
+> **★ 다섯 건의 공통 뿌리 — "이름은 맞는데 다른 것이 실행된다"**
+>
+> | # | 이름 | 실제로 실행된 것 |
+> |---|---|---|
+> | 1 | `python3` | MS Store 앱 실행 별칭 |
+> | 3 | `/perf/load.js` | `C:/Program Files/Git/perf/load.js` (MSYS 변환) |
+> | **5** | **`bash`** | **WSL 의 bash** |
+>
+> 1·3·5는 **같은 형태**다 — 이름 해석이 의도와 다른 대상을 가리킨다.
+> 2(`gradlew` CRLF)와 4(동시 append)는 내용이 변형되는 쪽이다.
+>
+> **처방도 같다** — 이름에 의존하지 않고 **무엇이 실행됐는지 확인**한다.
+> `pyguard.sh` 가 인터프리터에게 표식을 출력시키는 것이 정확히 그 처방이고,
+> 5번은 도구가 아니라 **문서(README Windows 절)** 에서 같은 일을 해야 한다.
+>
+> 5번은 **보고서 캡처를 찍다가** 나왔다 — 사용자가 `cmd.exe` 에서 `bash docs/verify/e2e.sh`
+> 를 실행했고 WSL 이 잡혔다. **개발 내내 Git Bash 만 써서 드러나지 않았던 경로다.**
 
 **넷 다 macOS 여섯 Phase 동안 드러날 수 없었다.** 그리고 4번은 앞의 셋과 달리
 **"실패가 성공처럼 보인다"가 아니라 "쓴 것이 사라진다"** 라 더 찾기 어려웠다 —

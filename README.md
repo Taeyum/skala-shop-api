@@ -55,7 +55,30 @@ git ls-files --eol gradlew        # w/crlf 로 나오면 아래를 실행
 rm gradlew && git checkout -- gradlew
 ```
 
-**③ 검증 스크립트를 돌릴 때만 — `python3`**
+**③ 검증 스크립트는 `cmd.exe`가 아니라 Git Bash에서 실행한다**
+
+`cmd.exe`나 PowerShell에서 `bash docs/verify/e2e.sh`를 치면 **WSL의 bash가 잡혀** 이렇게 죽는다.
+
+```
+<3>WSL (131810 - Relay) ERROR: CreateProcessCommon:818: execvpe(/bin/bash) failed: No such file or directory
+```
+
+같은 이름의 실행 파일이 셋 있고 PATH 순서가 WSL 쪽을 먼저 고르기 때문이다.
+
+```
+C:\Program Files\Git\usr\bin\bash.exe     ← 이것을 써야 한다
+C:\Windows\System32\bash.exe              ← WSL. cmd 에서는 이게 먼저 잡힌다
+```
+
+**시작 메뉴에서 `Git Bash`를 열고 실행한다.** 굳이 `cmd.exe`에서 하려면 전체 경로를 쓴다:
+
+```
+"C:\Program Files\Git\bin\bash.exe" docs/verify/e2e.sh
+```
+
+> Gradle은 예외다 — `cmd.exe`에서는 `gradlew.bat build`가 그대로 동작한다.
+
+**④ 검증 스크립트를 돌릴 때만 — `python3`**
 
 앱 실행(`docker compose up`)에는 파이썬이 필요 없다. `docs/verify/`의 도구에만 쓰인다.
 
