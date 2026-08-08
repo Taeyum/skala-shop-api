@@ -16,10 +16,9 @@ docker compose down      # 중지
 docker compose down -v   # 중지 + DB 데이터까지 삭제
 ```
 
-> **현재 상태** — Phase 0(스펙 구현)이 끝나기 전이라 엔티티가 없다.
-> 그래서 `app` 서비스는 시드(`data.sql`)가 참조할 테이블을 찾지 못해 아직 기동하지 않는다.
-> DB만 먼저 띄우려면 `docker compose up -d postgres`.
-> Phase 0 완료 시 이 문단은 삭제한다.
+DB만 먼저 띄우려면 `docker compose up -d postgres`.
+
+> **동작 확인** — 기동 후 `bash docs/verify/e2e.sh` 가 **48/48** 이면 정상이다 (`python3` 필요).
 
 ## 로컬 개발
 
@@ -36,7 +35,7 @@ docker compose up -d postgres
 
 | 프로파일 | 용도 | DB |
 |---|---|---|
-| `local` (기본) | 호스트에서 직접 실행 | `localhost:5432` (개발용 기본값 내장) |
+| `local` (기본) | 호스트에서 직접 실행 | `localhost:5433` (개발용 기본값 내장) |
 | `docker` | 컨테이너 실행 | compose가 환경변수로 주입. **기본값 없음 — 누락 시 기동 실패** |
 | `test` | 자동화 테스트 | Testcontainers가 컨테이너를 띄우고 `@ServiceConnection`이 접속 정보를 연결 |
 
