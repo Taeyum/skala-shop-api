@@ -7,6 +7,9 @@
 # 그러면 chk가 인자를 4개 받아 $2와 $3이 둘 다 PARSE_ERR이 되어 '통과'로 잘못 판정된다.
 # 반드시 페이로드를 변수에 먼저 담고 "$VAR"로 넘긴다.
 set -u
+# 인터프리터를 먼저 검사한다. 아래 j() 가 파싱 실패와 인터프리터 사망을
+# 똑같이 PARSE_ERR 로 뭉개므로, 그 구분은 여기서 미리 끝내둬야 한다.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pyguard.sh"
 B=${B:-http://localhost:8080}
 C=$(mktemp)
 U="skala$RANDOM"
@@ -18,7 +21,7 @@ chk() { # chk "라벨" 실제 기대
   if [ "$2" = "$3" ]; then printf "  ✅ %-24s %s\n" "$1" "$2"; pass=$((pass+1))
   else printf "  ❌ %-24s 실제=[%s] 기대=[%s]\n" "$1" "$2" "$3"; fail=1; fi
 }
-j() { python3 -c "import sys,json;d=json.load(sys.stdin);print($1)" 2>/dev/null || echo "PARSE_ERR"; }
+j() { $PY -c "import sys,json;d=json.load(sys.stdin);print($1)" 2>/dev/null || echo "PARSE_ERR"; }
 POST() { curl -s -X POST "$B$1" -H 'Content-Type: application/json' -d "$2"; }
 POSTC() { curl -s -X POST "$B$1" -H 'Content-Type: application/json' -d "$2" -b "$C"; }
 ST()  { curl -s -o /dev/null -w '%{http_code}' "$@"; }

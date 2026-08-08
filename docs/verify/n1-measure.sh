@@ -6,6 +6,7 @@
 # 중요 — 쿼리 수를 세기 전에 **반환된 행 수를 먼저 단언**한다.
 # 조회가 비어 있거나 401로 튕기면 쿼리가 0~1개라 "개선됐다"로 보인다 (PLAN.md Phase 3 주의 ②).
 set -u
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pyguard.sh"
 LOG=$1
 N=${2:-20}
 B=${B:-http://localhost:8080}
@@ -27,7 +28,7 @@ PIDS=()
 for i in $(seq 1 "$N"); do
   P='{"productName":"'$TAG-$i'","productPrice":1000}'
   R=$(curl -s -X POST "$B/api/products" -H 'Content-Type: application/json' -d "$P")
-  ID=$(echo "$R" | python3 -c 'import sys,json;print(json.load(sys.stdin)["body"]["id"])' 2>/dev/null)
+  ID=$(echo "$R" | $PY -c'import sys,json;print(json.load(sys.stdin)["body"]["id"])' 2>/dev/null)
   [ -z "$ID" ] && fail "상품 생성 실패: $R"
   PIDS+=("$ID")
 done
@@ -46,7 +47,7 @@ AFTER=$(sqlcount)
 Q=$((AFTER-BEFORE))
 
 # ★ 쿼리 수보다 먼저 — 조회가 실제로 일했는지 단언한다
-ROWS=$(echo "$RESP" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(len(d["body"]["products"]))' 2>/dev/null)
+ROWS=$(echo "$RESP" | $PY -c'import sys,json;d=json.load(sys.stdin);print(len(d["body"]["products"]))' 2>/dev/null)
 [ -z "$ROWS" ] && fail "응답 파싱 실패 (401로 튕겼을 수 있다): $RESP"
 [ "$ROWS" -ne "$N" ] && fail "반환 행 수 $ROWS ≠ 기대 $N — 측정 대상이 일하지 않았다. 쿼리 수는 의미 없다"
 echo "  ✓ 반환 행 수 $ROWS 건 (= 주문한 상품 수)"
@@ -58,7 +59,7 @@ CTL=$(curl -s "$B/api/products/list?offset=0&count=10")
 sleep 0.7
 AFTER=$(sqlcount)
 CQ=$((AFTER-BEFORE))
-CROWS=$(echo "$CTL" | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["body"]["list"]))' 2>/dev/null)
+CROWS=$(echo "$CTL" | $PY -c'import sys,json;print(len(json.load(sys.stdin)["body"]["list"]))' 2>/dev/null)
 [ -z "$CROWS" ] && fail "대조군 응답 파싱 실패: $CTL"
 [ "$CROWS" -eq 0 ] && fail "대조군 반환 0건 — 대조군도 측정되지 않았다"
 echo "  ✓ 대조군 반환 행 수 $CROWS 건"

@@ -16,12 +16,16 @@
 #
 # 사용법: bash docs/verify/graceful-shutdown.sh <graceful|immediate>
 set -u
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pyguard.sh"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MODE=${1:-graceful}
 B=${B:-http://localhost:8080}
 OUT=$(mktemp)
 
-python3 - "$MODE" <<'PY'
+# ★ 이 블록은 application.yml 을 **덮어쓴다.** 인터프리터가 스텁이면
+#   아무 일도 없이 통과해 "immediate 로 바꿨다"고 착각한 채 측정하게 된다.
+#   위 pyguard 가 그 경우를 먼저 막는다.
+$PY - "$MODE" <<'PY'
 import re, sys, os
 root = os.environ.get('ROOT') or os.getcwd()
 path = os.path.join(root, 'src/main/resources/application.yml')

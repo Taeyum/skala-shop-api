@@ -15,6 +15,7 @@
 # 현재 코드의 회귀 검증은 e2e.sh(48건)를 쓴다. 이 파일은 **옛 태그를 재검증할 때만** 쓴다:
 #     git checkout phase1-structure && ./gradlew bootRun & ... && bash docs/verify/core-phase0-1.sh
 set -u
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pyguard.sh"
 B=${B:-http://localhost:8080}
 C=$(mktemp)
 U="core$RANDOM"
@@ -25,7 +26,7 @@ chk() {
   if [ "$2" = "$3" ]; then pass=$((pass+1))
   else printf "  ❌ %-22s 실제=[%s] 기대=[%s]\n" "$1" "$2" "$3"; fail=1; fi
 }
-j() { python3 -c "import sys,json;d=json.load(sys.stdin);print($1)" 2>/dev/null || echo "PARSE_ERR"; }
+j() { $PY -c "import sys,json;d=json.load(sys.stdin);print($1)" 2>/dev/null || echo "PARSE_ERR"; }
 POST()  { curl -s -X POST "$B$1" -H 'Content-Type: application/json' -d "$2"; }
 POSTC() { curl -s -X POST "$B$1" -H 'Content-Type: application/json' -d "$2" -b "$C"; }
 

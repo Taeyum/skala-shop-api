@@ -21,6 +21,27 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+# ── 인터프리터 선점 검사 (근거와 한계는 mutate.py 의 같은 블록 주석 참조) ──
+# 요약: 낡은 인터프리터는 여기서 잡고, MS Store 스텁은 여기서 잡을 수 없다
+# (스텁은 이 파일을 실행하지 않는다). 스텁 방어는 docs/verify/pyguard.sh 에 있다.
+# 배너가 없으면 이 파일은 실행되지 않은 것이다 — 이 도구는 "미실행 목록이 비었다"가
+# 정상 결과일 수 있어서, 침묵과 성공이 특히 헷갈린다.
+# Windows 기본 stdout 인코딩(cp949)에서 한글이 깨진다 — 진단 메시지보다 먼저 고정한다
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+_MIN = (3, 8)
+if sys.version_info[:2] < _MIN:
+    sys.stderr.write(
+        "\n  ❌ python %d.%d 이상이 필요하다 (현재 %s)\n     실행 파일: %s\n\n"
+        % (_MIN[0], _MIN[1], ".".join(map(str, sys.version_info[:3])), sys.executable))
+    raise SystemExit(2)
+sys.stderr.write("  · [branch-audit] python %s @ %s\n"
+                 % (".".join(map(str, sys.version_info[:3])), sys.executable))
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 REPORT = os.path.join(ROOT, 'build/reports/jacoco/test/jacocoTestReport.xml')
 

@@ -31,6 +31,34 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+# ── 인터프리터 선점 검사 ──────────────────────────────────────────────────
+# 여기서 잡는 것은 "낡거나 이상한 인터프리터"다.
+# ★ Windows의 MS Store 스텁은 **여기서 잡을 수 없다** — 스텁은 이 파일을 실행조차 하지 않고
+#   "Python " 한 줄만 찍은 뒤 exit 49 한다. 파일 안의 코드는 파일이 실행돼야 도는 것이라 구조적으로 불가능하다.
+#   그쪽 방어는 호출 경계에 있다: docs/verify/pyguard.sh
+#
+# 그래서 이 블록의 일은 둘이다.
+#   ① 요구 버전 미달이면 즉시 비정상 종료한다 — 조용한 오작동보다 시끄러운 실패가 낫다
+#   ② 시작 배너를 stderr로 찍는다. **배너가 없으면 이 파일은 실행되지 않은 것이다.**
+#      "출력이 없다"를 "할 일이 없었다"로 읽지 않기 위한 표식이며,
+#      이 도구에서는 특히 중요하다 — 조용히 끝나면 "변이 46건이 전부 잡혔다"로 오해된다.
+#   ③ 출력 인코딩을 UTF-8로 고정한다. Windows 파이썬은 stdout 이 cp949 로 잡혀
+#      한글이 통째로 깨진다(실측). **아래 진단 메시지부터 읽을 수 없게 되므로 가장 먼저 한다.**
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")   # 3.7+
+    except Exception:
+        pass
+
+_MIN = (3, 8)
+if sys.version_info[:2] < _MIN:
+    sys.stderr.write(
+        "\n  ❌ python %d.%d 이상이 필요하다 (현재 %s)\n     실행 파일: %s\n\n"
+        % (_MIN[0], _MIN[1], ".".join(map(str, sys.version_info[:3])), sys.executable))
+    raise SystemExit(2)
+sys.stderr.write("  · [mutate] python %s @ %s\n"
+                 % (".".join(map(str, sys.version_info[:3])), sys.executable))
+
 # 스크립트 위치에서 저장소 루트를 구한다 — 절대 경로를 박지 않는다
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, 'src/main/java/com/sk/skala/shopapi')
