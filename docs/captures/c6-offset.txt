@@ -1,0 +1,13 @@
+===== offset 해석 — 실제 동작 확인 =====
+일시: 2026-08-08 19:21  커밋: cf61aff
+
+구현: PageRequest.of(offset, count) — offset 을 **페이지 번호**로 해석
+근거: 강의 자료가 PageRequest 인자를 명시하지 않았고 완성 프로젝트가 제공되지 않았다
+      (DECISIONS.md 8절). Spring Data 관례를 따랐다.
+
+--- 실측 (상품 id 1..N 존재) ---
+  offset=0 count=2 → id [1, 2] / total 9
+  offset=1 count=2 → id [3, 4] / total 9
+  offset=2 count=2 → id [5, 6] / total 9
+
+  → 건너뛸 개수라면 offset=1 이 [2,3] 이어야 하나 [3,4] 다. 페이지 번호가 맞다.

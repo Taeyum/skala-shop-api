@@ -1,0 +1,31 @@
+===== 스펙 결함 6건 — 조치 후 동작 캡처 =====
+일시: 2026-08-08 19:20:00  커밋: cf61aff
+개선 전 상태는 각 Phase 기록(REVIEW/JOURNAL/DECISIONS)에서 인용한다.
+
+--- ① Mass Assignment — 가입 시 포인트 지정 시도
+요청: {"customerId":"mcap27812","customerPassword":"pw","customerPoint":999999999}
+응답: {"result":"success","message":null,"body":{"customerId":"mcap27812","customerPoint":1000000.00}}  → 서버 고정값 1,000,000. 클라이언트 지정 무시
+
+--- ② BOLA — 남의 계정 접근
+  남의 주문 조회 : HTTP 403
+  없는 계정 조회 : HTTP 403  (존재 여부 미노출 — 404가 아니라 403)
+
+--- ③ 사용자 열거 — 없는 ID vs 틀린 비밀번호
+  없는 ID     : {"result":"fail","message":"NOT_AUTHENTICATED","body":null}  틀린 비밀번호: {"result":"fail","message":"NOT_AUTHENTICATED","body":null}  → 상태·바디 동일
+
+--- ④ 음수 수량 우회 — 취소로 수량·포인트 증가 시도
+  응답: {"result":"fail","message":"invalid parameter: quantity","body":null}
+--- ⑤ 404·405·415 — 예전에는 전부 500 + 스택트레이스
+  없는 경로        : HTTP 404
+  잘못된 메서드    : HTTP 405
+  잘못된 Content-Type: HTTP 415
+  타입 불일치      : HTTP 400
+
+--- ⑥ 동시 첫 주문 UNIQUE 위반 — 예전에는 500
+  (부하 중 재현. 회귀 테스트 ConcurrentOrderTest 가 고정한다)
+  근거: docs/evidence/perf/sweep-win-*.txt 의 resp_5xx 전 구간 0
+    2        성공 100.00%  p95 p(95)=46.32ms 710.194607/s   iter 177.223304/s 409 46     5xx 0
+    5        성공 100.00%  p95 p(95)=16.57ms 1001.921575/s  iter 250.154366/s 409 262    5xx 0
+    10       성공 100.00%  p95 p(95)=14.72ms 1003.319702/s  iter 250.502881/s 409 500    5xx 0
+    20       성공 100.00%  p95 p(95)=14.82ms 1011.008817/s  iter 252.425567/s 409 743    5xx 0
+    40       성공 100.00%  p95 p(95)=15.54ms 990.934158/s   iter 247.407626/s 409 754    5xx 0

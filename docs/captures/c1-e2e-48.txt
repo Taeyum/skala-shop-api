@@ -1,0 +1,59 @@
+  · python: 3.9.2 (C:\Users\User\AppData\Local\Programs\Python\Python39\python3.exe)
+── E2E 6단계 ──
+  ✅ 1) 가입 포인트      1000000.0
+  ✅ 2) 로그인             success
+  ✅    비밀번호 키 부재 False
+  ✅    대리키 id 부재   False
+  ✅    쿠키 발급         1
+  ✅    HttpOnly              1
+  ✅    SameSite=Strict       1
+  ✅    Path=/                1
+  ✅ 3) 상품 수            3
+  ✅ 4) 주문 후 잔액     970000.0
+  ✅ 5) 수량                2
+  ✅    상품명             무선마우스
+  ✅ 6) 취소 후 잔액     985000.0
+── 비즈니스 규칙 회귀 ──
+  ✅ 재주문 누적(행 1개) 1
+  ✅ 재주문 누적(수량 4) 4
+  ✅ 취소 초과            INSUFFICIENT_QUANTITY
+  ✅ 전량취소 행삭제   0
+  ✅ 포인트 부족         INSUFFICIENT_FUNDS
+  ✅ 미인증                NOT_AUTHENTICATED
+  ✅ 중복 가입            DATA_DUPLICATED
+  ✅ 없는 상품            DATA_NOT_FOUND
+  ✅ 빈 상품명            invalid parameter: productName
+  ✅ 음수 포인트 수정  invalid parameter: customerPoint
+  ✅ 틀린 비밀번호 거부 NOT_AUTHENTICATED
+  ✅ Mass Assignment 차단   1000000.0
+── 수량 검증 ──
+  ✅ 음수 수량 주문 거부 invalid parameter: quantity
+  ✅ 0 수량 주문 거부   invalid parameter: quantity
+  ✅ 음수 수량 취소 거부 invalid parameter: quantity
+  ✅ 잔액 변동 없음     1000000.0
+  ✅ 여러 필드 위반 형식 invalid parameter: productName, productPrice
+── 참조 무결성 ──
+  ✅ 주문 있는 상품 삭제 → 409 409
+  ✅ 보유 상품 있는 탈퇴 → 409 409
+  ✅ 취소 후 탈퇴 → 200 200
+── BOLA 방어 ──
+  ✅ 남의 계정 수정 → 403 403
+  ✅ 남의 계정 삭제 → 403 403
+  ✅ 남의 주문 조회 → 403 403
+  ✅ 본인 주문 조회 → 200 200
+  ✅ 인증 없이 조회 → 401 401
+  ✅ 없는 계정도 403 (존재 미노출) 403
+  ✅ BOLA 후 피해자 잔액 온전 1000000.0
+── HTTP 상태 매핑 ──
+  ✅ 없는 상품 → 404    404
+  ✅ 중복 가입 → 409    409
+  ✅ 미인증 → 401        401
+  ✅ 필수값 누락 → 400 400
+  ✅ 깨진 JSON → 400      400
+  ✅ 정상 조회 → 200    200
+── 사용자 열거 방어 ──
+  ✅ 없는 ID·틀린 PW 상태 동일 401/401
+  ✅ 없는 ID·틀린 PW 바디 동일 NOT_AUTHENTICATED/NOT_AUTHENTICATED
+
+통과 48 건
+═══ 전체 통과 ═══

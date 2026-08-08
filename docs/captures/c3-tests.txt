@@ -1,0 +1,17 @@
+총 160건 · 실패 0건
+
+  etc                     33건
+  controller              21건
+  logging                 15건
+  service                 14건
+  auth                    13건
+  architecture            12건
+  repository              10건
+  exception               10건
+  e2e                      7건
+  order                    7건
+  entity                   5건
+  actuator                 4건
+  common                   3건
+  config                   3건
+  tools                    3건

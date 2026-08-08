@@ -1,0 +1,22 @@
+===== Swagger / OpenAPI =====
+일시: 2026-08-08 19:21  커밋: cf61aff
+
+swagger-ui.html : HTTP 302
+v3/api-docs     : HTTP 200
+
+--- 노출된 엔드포인트 (OpenAPI 문서에서 추출) ---
+  title: SKALA-SHOP API / version: v1
+
+  DELETE /api/customers                     탈퇴 — 보유 상품이 있으면 409 DATA_IN_USE
+  POST   /api/customers                     회원가입 — 초기 포인트는 서버가 정한다
+  PUT    /api/customers                     정보 수정 — 본인만
+  POST   /api/customers/cancel              취소 — 주문 당시 가격으로 환불. 0이 되면 행 삭제
+  GET    /api/customers/list                전체 고객 목록 — **인증 없이 열려 있다** (알려진 한계, SPEC 1절)
+  POST   /api/customers/login               로그인 — 성공하면 bff-access 쿠키가 발급된다. **여기서 먼저 실행하라**
+  POST   /api/customers/order               주문 — 포인트로 결제. 같은 상품 재주문은 수량 누적
+  GET    /api/customers/{customerId}        고객 정보 + 보유 상품 목록 — 본인만
+  DELETE /api/products                      상품 삭제 — 주문된 상품이면 409 DATA_IN_USE
+  POST   /api/products                      상품 등록 — 요청의 id는 무시된다
+  PUT    /api/products                      상품 수정 — id를 바디에 담는다 (SPEC 계약)
+  GET    /api/products/list                 상품 목록 (페이징) — offset은 페이지 번호다
+  GET    /api/products/{id}                 상품 상세
