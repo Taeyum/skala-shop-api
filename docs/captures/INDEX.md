@@ -81,6 +81,45 @@ Phase 7 보고서에 넣을 자료. **각 파일이 어느 부에 쓰이는지**
 `s8`·`s11`은 **보낸 것과 받은 것이 같은 화면에** 있다.
 "서버가 클라이언트 지정 값을 무시한다"를 말이 아니라 대조로 보인다.
 
+## 터미널 캡처 t1~t7 (완료)
+
+**Git Bash 에서 직접 실행해 촬영했다.** 터미널 창은 브라우저 확장이 제어하지 못한다.
+
+| 파일 | 명령 | 화면의 요점 | 쓰이는 곳 |
+|---|---|---|---|
+| `t1-compose-ps.png` | `docker compose ps` | app·postgres **healthy** · 5433 포트 정책 | **1부** |
+| `t2-e2e-48.png` | `bash docs/verify/e2e.sh` | **48/48** · 첫 줄에 pyguard 인터프리터 확인 | **1·2부** |
+| `t3-build.png` | `./gradlew clean build` | **BUILD SUCCESSFUL** · `executed` · 커버리지 게이트 포함 | **4부** |
+| `t4-archunit.png` | `--tests '*ArchitectureTest*' --rerun-tasks` | ArchUnit 실행 (건수는 `s16` 리포트) | **4부** |
+| `t5-concurrent.png` | `--tests '*ConcurrentOrderTest*'` | 동시성 테스트 통과 (수치는 아래 코드블록) | **5부** |
+| `t6-k6.png` | `bash docs/perf/run.sh load.js ...` | k6 요약 · **하네스의 DB 초기화 전후** | **5부** |
+| `t7-ha.png` | HA `ps` + 분산 카운트 | **앱에 호스트 포트 없음** · 분산 18/22 | **6부** |
+
+### t5 에 붙일 수치 (터미널에 한글이 cp949 로 깨져 텍스트로 보관)
+
+```
+[동시성] 스레드 100 · 성공 14 · 실패 {ObjectOptimisticLockingFailureException=86} · 774ms
+[동시성] 최종 포인트 986000.00 · 기대 986000.00 · 차이 0.00
+[첫 주문 경합] {성공=5, DataIntegrityViolationException=9, ObjectOptimisticLockingFailureException=16}
+```
+
+**`차이 0.00` 이 5부의 핵심이다.** 락이 없던 시절엔 100건이 전부 "성공"이면서 오차가 88,000이었다 —
+**실패 86건이 늘어난 것이 곧 개선이다.**
+
+### 캡처를 만들며 나온 결함 3건
+
+터미널 캡처 작업 자체가 결함을 찾았다. 전부 고치고 커밋했다.
+
+| 무엇 | 어디서 | 조치 |
+|---|---|---|
+| **`bash` 가 WSL 로 잡힌다** | `cmd.exe` 에서 t2 실행 | README Windows 절에 실행 방법 명시 (`685af6e`) |
+| **`gradlew build` 가 캐시로 2초 만에 성공** | t3 | `clean build` 로 강제 실행. **성공 화면이 일을 안 했다는 증거 없이 나온 사례** |
+| **`run.sh` 가 compose 경로를 변환 없이 넘김** | t6 | `hostpath()` 적용 + 네트워크 없으면 중단 (`7c4ede8`) |
+
+> **t6 의 실패는 가드가 잡았다** — `❌ k6 요약에 http_reqs 가 없다 — 측정이 성립하지 않았다`.
+> Phase 6 에서 넣은 장치가 제 역할을 했고, 빈 결과 파일이 증거 폴더에 남는 것을 막았다.
+> **4부 "실패는 시끄러워야 한다"의 실제 작동 기록이다.**
+
 ## (이전 계획) 스크린샷 계획 — s1 ~ s9
 
 **텍스트(.txt)와 이미지(.png)를 함께 둔다.** 보고서에는 **스크린샷은 증거로, 코드블록은 가독성으로**
