@@ -1,0 +1,348 @@
+# ===== 포화 · 캐시 ON (1회) =====
+# 일시   : 2026-08-08 17:21:03 +0900  커밋: 324897e
+# 시나리오: cache.js MODE=plain THINK=0 VUS=50 45s — 포화 조건
+# 설정   : SPRING_CACHE_TYPE=simple, 앱 재기동으로 DB 초기화
+# ===============================
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /perf/cache.js
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 55 max VUs, 1m40s max duration (incl. graceful stop):
+              * warmup: 5 looping VUs for 20s (exec: traffic, gracefulStop: 30s)
+              * measure: 50 looping VUs for 45s (exec: traffic, startTime: 25s, gracefulStop: 30s)
+
+
+running (0m01.0s), 05/55 VUs, 548 complete and 0 interrupted iterations
+warmup    [   2% ] 5 VUs    00.4s/20s
+measure • [   0% ] waiting  24.6s
+
+running (0m02.0s), 05/55 VUs, 3165 complete and 0 interrupted iterations
+warmup    [   7% ] 5 VUs    01.4s/20s
+measure • [   0% ] waiting  23.6s
+
+running (0m03.0s), 05/55 VUs, 6654 complete and 0 interrupted iterations
+warmup    [  12% ] 5 VUs    02.4s/20s
+measure • [   0% ] waiting  22.6s
+
+running (0m04.0s), 05/55 VUs, 10844 complete and 0 interrupted iterations
+warmup    [  17% ] 5 VUs    03.4s/20s
+measure • [   0% ] waiting  21.6s
+
+running (0m05.0s), 05/55 VUs, 16016 complete and 0 interrupted iterations
+warmup    [  22% ] 5 VUs    04.4s/20s
+measure • [   0% ] waiting  20.6s
+
+running (0m06.0s), 05/55 VUs, 22222 complete and 0 interrupted iterations
+warmup    [  27% ] 5 VUs    05.4s/20s
+measure • [   0% ] waiting  19.6s
+
+running (0m07.0s), 05/55 VUs, 31069 complete and 0 interrupted iterations
+warmup    [  32% ] 5 VUs    06.4s/20s
+measure • [   0% ] waiting  18.6s
+
+running (0m08.0s), 05/55 VUs, 40355 complete and 0 interrupted iterations
+warmup    [  37% ] 5 VUs    07.4s/20s
+measure • [   0% ] waiting  17.6s
+
+running (0m09.0s), 05/55 VUs, 49113 complete and 0 interrupted iterations
+warmup    [  42% ] 5 VUs    08.4s/20s
+measure • [   0% ] waiting  16.6s
+
+running (0m10.0s), 05/55 VUs, 56996 complete and 0 interrupted iterations
+warmup    [  47% ] 5 VUs    09.4s/20s
+measure • [   0% ] waiting  15.6s
+
+running (0m11.0s), 05/55 VUs, 65969 complete and 0 interrupted iterations
+warmup    [  52% ] 5 VUs    10.4s/20s
+measure • [   0% ] waiting  14.6s
+
+running (0m12.0s), 05/55 VUs, 75515 complete and 0 interrupted iterations
+warmup    [  57% ] 5 VUs    11.4s/20s
+measure • [   0% ] waiting  13.6s
+
+running (0m13.0s), 05/55 VUs, 84954 complete and 0 interrupted iterations
+warmup    [  62% ] 5 VUs    12.4s/20s
+measure • [   0% ] waiting  12.6s
+
+running (0m14.0s), 05/55 VUs, 94574 complete and 0 interrupted iterations
+warmup    [  67% ] 5 VUs    13.4s/20s
+measure • [   0% ] waiting  11.6s
+
+running (0m15.0s), 05/55 VUs, 104114 complete and 0 interrupted iterations
+warmup    [  72% ] 5 VUs    14.4s/20s
+measure • [   0% ] waiting  10.6s
+
+running (0m16.0s), 05/55 VUs, 113531 complete and 0 interrupted iterations
+warmup    [  77% ] 5 VUs    15.4s/20s
+measure • [   0% ] waiting  09.6s
+
+running (0m17.0s), 05/55 VUs, 122816 complete and 0 interrupted iterations
+warmup    [  82% ] 5 VUs    16.4s/20s
+measure • [   0% ] waiting  08.6s
+
+running (0m18.0s), 05/55 VUs, 132389 complete and 0 interrupted iterations
+warmup    [  87% ] 5 VUs    17.4s/20s
+measure • [   0% ] waiting  07.6s
+
+running (0m19.0s), 05/55 VUs, 141870 complete and 0 interrupted iterations
+warmup    [  92% ] 5 VUs    18.4s/20s
+measure • [   0% ] waiting  06.6s
+
+running (0m20.0s), 05/55 VUs, 151375 complete and 0 interrupted iterations
+warmup    [  97% ] 5 VUs    19.4s/20s
+measure • [   0% ] waiting  05.6s
+
+running (0m21.0s), 00/55 VUs, 156954 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs    20s
+measure • [   0% ] waiting  04.6s
+
+running (0m22.0s), 00/55 VUs, 156954 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs    20s
+measure • [   0% ] waiting  03.6s
+
+running (0m23.0s), 00/55 VUs, 156954 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs    20s
+measure • [   0% ] waiting  02.6s
+
+running (0m24.0s), 00/55 VUs, 156954 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs    20s
+measure • [   0% ] waiting  01.6s
+
+running (0m25.0s), 00/55 VUs, 156954 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs    20s
+measure • [   0% ] waiting  00.6s
+
+running (0m26.0s), 50/55 VUs, 161631 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [   1% ] 50 VUs  00.4s/45s
+
+running (0m27.0s), 50/55 VUs, 174497 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [   3% ] 50 VUs  01.4s/45s
+
+running (0m28.0s), 50/55 VUs, 187598 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [   5% ] 50 VUs  02.4s/45s
+
+running (0m29.0s), 50/55 VUs, 200690 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [   8% ] 50 VUs  03.4s/45s
+
+running (0m30.0s), 50/55 VUs, 213916 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  10% ] 50 VUs  04.4s/45s
+
+running (0m31.0s), 50/55 VUs, 226953 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  12% ] 50 VUs  05.4s/45s
+
+running (0m32.0s), 50/55 VUs, 240457 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  14% ] 50 VUs  06.4s/45s
+
+running (0m33.0s), 50/55 VUs, 253652 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  17% ] 50 VUs  07.4s/45s
+
+running (0m34.0s), 50/55 VUs, 266757 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  19% ] 50 VUs  08.4s/45s
+
+running (0m35.0s), 50/55 VUs, 279894 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  21% ] 50 VUs  09.4s/45s
+
+running (0m36.0s), 50/55 VUs, 293356 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  23% ] 50 VUs  10.4s/45s
+
+running (0m37.0s), 50/55 VUs, 306707 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  25% ] 50 VUs  11.4s/45s
+
+running (0m38.0s), 50/55 VUs, 320190 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  28% ] 50 VUs  12.4s/45s
+
+running (0m39.0s), 50/55 VUs, 333761 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  30% ] 50 VUs  13.4s/45s
+
+running (0m40.0s), 50/55 VUs, 344564 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  32% ] 50 VUs  14.4s/45s
+
+running (0m41.0s), 50/55 VUs, 357865 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  34% ] 50 VUs  15.4s/45s
+
+running (0m42.0s), 50/55 VUs, 371388 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  37% ] 50 VUs  16.4s/45s
+
+running (0m43.0s), 50/55 VUs, 384817 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  39% ] 50 VUs  17.4s/45s
+
+running (0m44.0s), 50/55 VUs, 398237 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  41% ] 50 VUs  18.4s/45s
+
+running (0m45.0s), 50/55 VUs, 411692 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  43% ] 50 VUs  19.4s/45s
+
+running (0m46.0s), 50/55 VUs, 424979 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  45% ] 50 VUs  20.4s/45s
+
+running (0m47.0s), 50/55 VUs, 438031 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  48% ] 50 VUs  21.4s/45s
+
+running (0m48.0s), 50/55 VUs, 451551 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  50% ] 50 VUs  22.4s/45s
+
+running (0m49.0s), 50/55 VUs, 465067 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  52% ] 50 VUs  23.4s/45s
+
+running (0m50.0s), 50/55 VUs, 477768 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  54% ] 50 VUs  24.4s/45s
+
+running (0m51.0s), 50/55 VUs, 491173 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  57% ] 50 VUs  25.4s/45s
+
+running (0m52.0s), 50/55 VUs, 504693 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  59% ] 50 VUs  26.4s/45s
+
+running (0m53.0s), 50/55 VUs, 517959 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  61% ] 50 VUs  27.4s/45s
+
+running (0m54.0s), 50/55 VUs, 531482 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  63% ] 50 VUs  28.4s/45s
+
+running (0m55.0s), 50/55 VUs, 544797 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  65% ] 50 VUs  29.4s/45s
+
+running (0m56.0s), 50/55 VUs, 557838 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  68% ] 50 VUs  30.4s/45s
+
+running (0m57.0s), 50/55 VUs, 570554 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  70% ] 50 VUs  31.4s/45s
+
+running (0m58.0s), 50/55 VUs, 583358 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  72% ] 50 VUs  32.4s/45s
+
+running (0m59.0s), 50/55 VUs, 596774 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  74% ] 50 VUs  33.4s/45s
+
+running (1m00.0s), 50/55 VUs, 608987 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  77% ] 50 VUs  34.4s/45s
+
+running (1m01.0s), 50/55 VUs, 622388 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  79% ] 50 VUs  35.4s/45s
+
+running (1m02.0s), 50/55 VUs, 635838 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  81% ] 50 VUs  36.4s/45s
+
+running (1m03.0s), 50/55 VUs, 649267 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  83% ] 50 VUs  37.4s/45s
+
+running (1m04.0s), 50/55 VUs, 662657 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  85% ] 50 VUs  38.4s/45s
+
+running (1m05.0s), 50/55 VUs, 676071 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  88% ] 50 VUs  39.4s/45s
+
+running (1m06.0s), 50/55 VUs, 689429 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  90% ] 50 VUs  40.4s/45s
+
+running (1m07.0s), 50/55 VUs, 702884 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  92% ] 50 VUs  41.4s/45s
+
+running (1m08.0s), 50/55 VUs, 716487 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  94% ] 50 VUs  42.4s/45s
+
+running (1m09.0s), 50/55 VUs, 730306 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  97% ] 50 VUs  43.4s/45s
+
+running (1m10.0s), 50/55 VUs, 743463 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure   [  99% ] 50 VUs  44.4s/45s
+
+
+  █ THRESHOLDS 
+
+    checks{phase:measure}
+    ✓ 'rate>0.99' rate=100.00%
+
+    http_req_failed{phase:measure}
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 1502214 21290.783776/s
+    checks_succeeded...: 100.00% 1502214 out of 1502214
+    checks_failed......: 0.00%   0 out of 1502214
+
+    ✓ 200
+    ✓ 상품 가격이 실려 있다
+
+    CUSTOM
+    resp_2xx.......................: 751127 10645.675347/s
+    setup_requests.................: 20     0.283459/s
+
+    HTTP
+    http_req_duration..............: avg=2.99ms min=-1308769ns med=763.14µs p(95)=11.58ms p(99)=15.17ms max=290.69ms
+      { expected_response:true }...: avg=2.99ms min=-1308769ns med=763.14µs p(95)=11.58ms p(99)=15.17ms max=290.69ms
+    http_req_failed................: 0.00%  0 out of 751127
+      { phase:measure }............: 0.00%  0 out of 594153
+    http_reqs......................: 751127 10645.675347/s
+
+    EXECUTION
+    iteration_duration.............: avg=3.11ms min=258.2µs    med=887.23µs p(95)=11.7ms  p(99)=15.31ms max=34.49ms 
+    iterations.....................: 751107 10645.391888/s
+    vus............................: 50     min=0           max=50
+    vus_max........................: 55     min=55          max=55
+
+    NETWORK
+    data_received..................: 242 MB 3.4 MB/s
+    data_sent......................: 59 MB  838 kB/s
+
+
+
+
+running (1m10.6s), 00/55 VUs, 751107 complete and 0 interrupted iterations
+warmup  ✓ [ 100% ] 5 VUs   20s
+measure ✓ [ 100% ] 50 VUs  45s
