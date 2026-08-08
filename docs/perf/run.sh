@@ -46,8 +46,25 @@ host_cores() {
 #   PERF_COMPOSE_FILE=docker-compose.ha.yml PERF_APP_SERVICE=lb bash docs/perf/run.sh ...
 PERF_COMPOSE_FILE=${PERF_COMPOSE_FILE:-docker-compose.yml}
 PERF_APP_SERVICE=${PERF_APP_SERVICE:-app}
-NET=$(docker inspect "$(docker compose -f "$ROOT/$PERF_COMPOSE_FILE" ps -q "$PERF_APP_SERVICE")" \
+# ★ compose 파일 경로도 호스트 형식이어야 한다.
+#   MSYS_NO_PATHCONV=1 을 켜둔 상태라 "/c/..." 가 그대로 docker.exe 에 넘어가고
+#   docker 는 그걸 "C:\c\..." 로 읽는다 (실측: open C:\c\Users\...\docker-compose.yml).
+#   ※ 아래 다른 호출들은 `cd "$ROOT" && docker compose ...` 형태라 bash 가 경로를 처리하므로 안전하다.
+#     이 줄만 경로를 **인자로** 넘겨서 걸렸다 — 같은 파일 안에서도 호출 형태에 따라 갈린다.
+NET=$(docker inspect "$(docker compose -f "$(hostpath "$ROOT/$PERF_COMPOSE_FILE")" ps -q "$PERF_APP_SERVICE")" \
         --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+
+# 네트워크를 못 찾으면 여기서 멈춘다.
+# 빈 값으로 docker run 에 넘기면 "no name set for network" 로 죽는데,
+# 그 메시지만으로는 원인이 경로인지 스택이 안 떠 있는 건지 알 수 없다.
+if [ -z "$NET" ]; then
+  {
+    echo "  ❌ compose 네트워크를 찾지 못했다."
+    echo "     compose 파일: $PERF_COMPOSE_FILE / 서비스: $PERF_APP_SERVICE"
+    echo "     스택이 떠 있는지 확인: docker compose ps"
+  } >&2
+  exit 1
+fi
 
 reset_db() {
   # ddl-auto=create 이므로 앱을 다시 만들면 스키마·시드가 초기 상태로 돌아간다.
