@@ -19,10 +19,27 @@ hostpath() {
   esac
 }
 
+# 호스트 사양 — OS마다 다른 명령을 순서대로 시도한다 (run.sh 와 같은 이유)
+host_cpu() {
+  sysctl -n machdep.cpu.brand_string 2>/dev/null && return
+  grep -m1 'model name' /proc/cpuinfo 2>/dev/null | sed 's/.*: *//' && return
+  printf '%s' "${PROCESSOR_IDENTIFIER:-unknown}"
+}
+host_cores() {
+  sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || printf '%s' "${NUMBER_OF_PROCESSORS:-?}"
+}
+
 {
   echo "# ===== 스윕 측정 조건 ====="
   echo "# 일시     : $(date '+%Y-%m-%d %H:%M:%S %z')"
   echo "# 커밋     : $(cd "$ROOT" && git rev-parse HEAD)"
+  # ★ 커밋 해시만으로는 "무엇을 실행했는가"가 특정되지 않는다.
+  #   작업트리가 dirty 면 실제 실행본은 그 커밋이 아니다.
+  #   run.sh 에는 이 줄이 있었고 sweep.sh 에는 없었다 — 같은 목적의 두 도구가
+  #   기록 항목이 달랐고, 그 비대칭이 2026-08-08 측정에서 실제로 드러났다.
+  echo "# 작업트리 : $(cd "$ROOT" && [ -z "$(git status --porcelain)" ] && echo clean || echo '수정됨(dirty) — 실행본이 위 커밋과 다르다')"
+  echo "# 호스트   : $(uname -srm) / $(host_cpu) / 코어 $(host_cores)"
+  echo "# Docker   : CPU $(docker info --format '{{.NCPU}}') / MEM $(( $(docker info --format '{{.MemTotal}}') / 1073741824 ))GB"
   echo "# 변수     : $ENVVAR = $*"
   echo "# 시나리오 : load.js VUS=50 DURATION=45s (워밍업 20초 별도)"
   echo "# 각 값마다 app 재기동 → DB 초기화 → 측정"
@@ -53,6 +70,13 @@ for VALUE in "$@"; do
   RPS=$(echo "$RAW" | grep -E "^\s+http_reqs" | grep -oE "[0-9.]+/s")
   OK=$(echo "$RAW"  | grep -E "checks_succeeded" | grep -oE "[0-9.]+%")
   ITER=$(echo "$RAW"| grep -E "^\s+iterations" | grep -oE "[0-9.]+/s")
+  # 409(낙관적 락 충돌)와 5xx 를 함께 남긴다.
+  # p95 가 편차에 묻혀도 409 의 경향은 "설정이 동시 실행 폭을 실제로 바꿨는가"를 말해준다.
+  # 카운터 이름에 숫자가 들어 있어(resp_409_conflict) 콜론 뒤만 잘라낸다.
+  # 카운터가 아예 없으면 k6 가 줄을 생략한 것이고 그때는 실제로 0이다 —
+  # 요약 자체가 파싱된 것은 아래 가드가 이미 보장한다.
+  C409=$(echo "$RAW" | grep -E "^\s+resp_409_conflict" | sed 's/.*: *//' | awk '{print $1}')
+  C5XX=$(echo "$RAW" | grep -E "^\s+resp_5xx"          | sed 's/.*: *//' | awk '{print $1}')
 
   # ★ 파싱이 비면 즉시 중단한다.
   # 이전 판은 빈 값을 그대로 표에 적었다 — "10  성공   p95   iter" 같은 줄이 3개 남았고
@@ -67,6 +91,7 @@ for VALUE in "$@"; do
     exit 1
   fi
 
-  printf "%-8s 성공 %-8s p95 %-10s %-14s iter %s\n" "$VALUE" "$OK" "$P95" "$RPS" "$ITER" | tee -a "$RESULT"
+  printf "%-8s 성공 %-8s p95 %-12s %-14s iter %-12s 409 %-6s 5xx %s\n" \
+    "$VALUE" "$OK" "$P95" "$RPS" "$ITER" "${C409:-0}" "${C5XX:-0}" | tee -a "$RESULT"
 done
 echo; echo "결과: $RESULT"
