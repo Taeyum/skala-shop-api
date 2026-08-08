@@ -34,18 +34,46 @@ Phase 7 보고서에 넣을 자료. **각 파일이 어느 부에 쓰이는지**
 > `ha-cache-risk.txt`가 그 현상이 존재했다는 유일한 기록이다 —
 > **결함을 고치면 그 증거는 기록에만 남는다.**
 
-## ⚠️ 사용자가 직접 촬영해야 하는 것
+## 형식 방침 — 텍스트는 인용용, 이미지는 지면용
 
-브라우저 확장이 연결돼 있지 않아 **화면 스크린샷은 찍지 못했다.**
-아래는 직접 촬영이 필요하다. 스택이 떠 있으면 바로 열린다.
+**터미널 출력·API 응답·측정 결과는 `.txt`로 유지한다.** 복사·검색이 되고 보고서에
+코드블록으로 그대로 들어간다. **둘을 함께 둔다 — 텍스트를 이미지로 대체하지 않는다.**
 
-| 무엇 | URL / 방법 | 쓰이는 곳 |
-|---|---|---|
-| **Swagger UI 전체 화면** | <http://localhost:8080/swagger-ui.html> | **1부** |
-| **Swagger 에서 로그인 → 주문 실행** | 같은 화면에서 `POST /api/customers/login` 실행 후 `POST /api/customers/order` | **1부** (쿠키 인증이 브라우저에서 그대로 동작함을 보임) |
+**다만 아래 둘은 이미지가 필요하다.** 공지가 화면 캡처를 포함한 PDF를 요구하고,
+색상·레이아웃이 정보를 전달하는 자료라 텍스트로는 전달되지 않는다.
 
-내용 자체는 `c5-swagger.txt`에 텍스트로 확보돼 있어 **없어도 보고서는 성립한다.**
-스크린샷은 "브라우저만으로 호출 가능"을 시각적으로 보이기 위한 것이다.
+## ⚠️ 촬영이 필요한 이미지 (준비 완료 — 열기만 하면 된다)
+
+브라우저 확장이 연결돼 있지 않아 **제가 스크린샷을 찍지 못했다.** 아래 상태로 준비해뒀다.
+
+| 파일명(예정) | 무엇 | 여는 방법 | 쓰이는 곳 |
+|---|---|---|---|
+| `i1-jacoco.png` | **JaCoCo 커버리지 리포트** — 패키지별 색상 막대 | 아래 경로 | **4부** |
+| `i2-swagger-full.png` | **Swagger UI 전체 화면** — 13개 엔드포인트 | <http://localhost:8080/swagger-ui.html> | **1부** |
+| `i3-swagger-order.png` | **로그인 → 주문 실행 결과** | 같은 화면에서 실행 | **1부** |
+
+```
+! start "" "C:/Users/User/Desktop/skala/skala-backend/skala-shop-api/build/reports/jacoco/test/html/index.html"
+! start "" "http://localhost:8080/swagger-ui.html"
+```
+
+**현재 준비된 상태** (단일 구성 `docker compose up` — 보고서의 기본 실행 방법과 일치)
+
+- 앱·DB `healthy`, 시드 상품 3개 (무선마우스 15,000 / 블루투스키보드 29,000 / USB허브 39,000)
+- **SPEC 5절 계정을 미리 만들어 뒀다** — `skala01` / `pw1234`, 포인트 1,000,000
+
+### `i3` 촬영 순서 (3단계면 끝난다)
+
+1. `POST /api/customers/login` → Try it out → 바디에 `{"customerId":"skala01","customerPassword":"pw1234"}` → Execute
+   → **200 과 `Set-Cookie: bff-access=...`** 가 보인다
+2. `POST /api/customers/order` → Try it out → `{"productId":1,"quantity":2}` → Execute → **200**
+3. `GET /api/customers/{customerId}` → `skala01` → Execute → **포인트 970,000 · 무선마우스 수량 2**
+
+**쿠키 인증이 브라우저에서 그대로 동작한다**는 것이 이 장면의 요지다 —
+Swagger 에서 토큰을 따로 넣는 절차가 없다.
+
+> 내용 자체는 `c5-swagger.txt`에 텍스트로 확보돼 있어 **이미지가 없어도 보고서는 성립한다.**
+> 이미지는 지면용이다.
 
 ## 캡처를 만들며 발견한 것
 
