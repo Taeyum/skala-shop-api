@@ -144,7 +144,7 @@
 - [x] Graceful shutdown — 기능 활성 확인. **효과는 측정하지 못했다** (REVIEW 참조)
 - [x] 프로파일 분리 (local / test / docker) + `docker-compose.yml`
 - [x] Dockerfile 하드닝 — non-root, layered jar, JRE, 컨테이너 인식 JVM
-      **크기는 168MB로 동일**(이전에도 멀티스테이지+JRE). 이득은 재배포 전송량 56.9MB → 393kB
+      **크기는 줄지 않았다** — 160MB → 168MB(이전에도 멀티스테이지+JRE). 이득은 재배포 전송량 56.9MB → 393kB
 - [x] ~~**HA 다중 인스턴스** — app 2개 + 로드밸런서~~
       **Phase 6으로 미룬다.** 전제(무상태 JWT, traceId 이어받기)는 갖췄으나
       다중 인스턴스의 값은 처리량으로 보여야 하고 그 측정 도구가 Phase 6에서 준비된다
