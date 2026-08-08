@@ -1,0 +1,89 @@
+# HA 다중 인스턴스 구성 — nginx 로드밸런서 + app 2대 + 공유 PostgreSQL.
+#
+#   docker compose -f docker-compose.ha.yml up -d --build
+#
+# ★ docker-compose.yml 은 한 글자도 건드리지 않는다.
+#   `docker compose up` 한 줄로 단일 인스턴스가 뜨는 Phase 0 이식성이 그대로 유지된다.
+#
+# 왜 프로파일이나 오버라이드가 아니라 **독립 파일**인가
+#   · 프로파일 — compose 에서 `profiles` 가 없는 서비스는 항상 뜬다.
+#     app 에 profiles 를 달면 `docker compose up` 이 앱을 안 띄우고(이식성 파괴),
+#     안 달면 HA 에서 app 과 lb 가 같은 포트를 두고 충돌한다.
+#   · 오버라이드 — compose 에서 `ports` 는 병합(append)이라
+#     **기존 app 의 호스트 포트를 제거할 수 없다.** LB 만 노출한다는 정책을 지킬 수 없다.
+#
+# postgres 는 extends 로 끌어와 정의 중복과 드리프트를 막는다.
+# (app 처럼 ports 를 제거해야 하는 쪽은 extends 로 해결되지 않아 여기서 새로 정의한다)
+
+x-app: &app
+  build: .
+  image: ${APP_IMAGE:-skala-shop-api:local}
+  depends_on:
+    postgres:
+      condition: service_healthy
+  # ★ 호스트 포트를 노출하지 않는다.
+  #   LB 를 우회한 접근이 불가능해야 "LB 를 통해 동작한다"는 검증이 정직해진다.
+  environment:
+    SPRING_PROFILES_ACTIVE: docker
+    DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-shopdb}
+    DB_USERNAME: ${POSTGRES_USER:-shop}
+    DB_PASSWORD: ${POSTGRES_PASSWORD:-shoppw}
+    JWT_SECRET: ${JWT_SECRET:-dev-only-do-not-use-in-production-0123456789}
+    # ★ 풀은 **인스턴스마다** 잡힌다. app 2대 × 10 = DB 커넥션 20이다.
+    #   스윕에서 확인한 409 비율이 풀 20 값에 가까워질 것으로 예측한다
+    #   (docs/evidence/perf/ha-prediction.md, DECISIONS.md 26절)
+    DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+    TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
+    # 로컬 캐시 스위치. 기본은 현재 동작(simple = ConcurrentMapCacheManager) 그대로.
+    # ★ 다중 인스턴스에서 캐시는 인스턴스마다 따로 존재해 **낡은 값을 준다**(실증됨).
+    #   즉시 회피하려면 SPRING_CACHE_TYPE=none 으로 끈다. 근거는 DECISIONS.md 25·27절.
+    SPRING_CACHE_TYPE: ${SPRING_CACHE_TYPE:-simple}
+  stop_grace_period: 30s
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+    interval: 10s
+    timeout: 3s
+    start_period: 40s
+    retries: 5
+
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+
+  app1:
+    <<: *app
+  app2:
+    <<: *app
+
+  lb:
+    image: nginx:1.27-alpine
+    # ★ 두 인스턴스가 **healthy 가 된 뒤에** LB 를 띄운다.
+    #   준비 안 된 앱으로 트래픽을 보내면 첫 요청들이 502 가 된다.
+    #
+    #   JOURNAL 2026-08-07 HEALTHCHECK 항목이 "HA 구성에서 기동이 무한 대기한다"고
+    #   예고한 자리다. 앱 헬스체크가 start_period 40s / interval 10s / retries 5 라
+    #   실패 시 약 90초 안에 unhealthy 로 확정되고 compose 는 대기가 아니라 오류로 끝난다.
+    #   **말로 두지 않고 앱 하나를 일부러 못 뜨게 만들어 확인했다** (REVIEW 참조).
+    depends_on:
+      app1:
+        condition: service_healthy
+      app2:
+        condition: service_healthy
+    ports:
+      - "${LB_PORT:-8080}:80"
+    volumes:
+      - ./docs/ha/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      # 기본은 빈 문자열 = 헤더 없음. 측정할 때만 LB_EXPOSE_UPSTREAM=1 로 켠다.
+      # $$ 는 compose 에서 리터럴 $ 로, envsubst 를 거쳐 nginx 변수 $upstream_addr 가 된다.
+      LB_UPSTREAM_HEADER: ${LB_EXPOSE_UPSTREAM:+add_header X-Upstream-Addr $$upstream_addr always;}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/lb-health | grep -q 'lb ok'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  postgres-data:

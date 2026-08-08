@@ -40,7 +40,13 @@ host_cores() {
   sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || printf '%s' "${NUMBER_OF_PROCESSORS:-?}"
 }
 
-NET=$(docker inspect "$(docker compose -f "$ROOT/docker-compose.yml" ps -q app)" \
+# 네트워크는 실행 중인 서비스에서 알아낸다.
+# HA 구성(docker-compose.ha.yml)에는 `app` 서비스가 없고 app1/app2/lb 가 있으므로
+# 서비스명과 compose 파일을 환경변수로 바꿀 수 있게 한다. 기본값은 단일 구성 그대로다.
+#   PERF_COMPOSE_FILE=docker-compose.ha.yml PERF_APP_SERVICE=lb bash docs/perf/run.sh ...
+PERF_COMPOSE_FILE=${PERF_COMPOSE_FILE:-docker-compose.yml}
+PERF_APP_SERVICE=${PERF_APP_SERVICE:-app}
+NET=$(docker inspect "$(docker compose -f "$ROOT/$PERF_COMPOSE_FILE" ps -q "$PERF_APP_SERVICE")" \
         --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
 
 reset_db() {
