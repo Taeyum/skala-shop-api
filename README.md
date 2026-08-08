@@ -20,6 +20,54 @@ DB만 먼저 띄우려면 `docker compose up -d postgres`.
 
 > **동작 확인** — 기동 후 `bash docs/verify/e2e.sh` 가 **48/48** 이면 정상이다 (`python3` 필요).
 
+## Windows에서 실행할 때
+
+macOS·리눅스라면 위 한 줄로 끝난다. **Windows에서는 두 가지를 먼저 확인한다.**
+아래 항목들은 2026-08-08에 실제로 이 저장소를 Windows로 옮기며 겪은 것이다
+(경위: `docs/REVIEW.md` "머신 이전 검증").
+
+**① Docker Desktop이 "설치"가 아니라 "실행 중"이어야 한다**
+
+```bash
+docker info      # 이 명령이 성공해야 한다
+```
+
+실패하면 Docker Desktop을 먼저 띄운다. WSL2 백엔드는 첫 기동에 1~2분 걸린다.
+
+```
+failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine
+```
+
+**② 오래된 클론이라면 줄바꿈을 다시 적용한다**
+
+저장소가 `.gitattributes`로 `gradlew`·`*.sh`를 LF로 고정하므로 **새로 클론하면 문제가 없다.**
+다만 그 파일이 추가되기 전에 클론했다면 작업본이 CRLF인 채로 남아 있고, 이렇게 죽는다:
+
+```
+#15 [build 5/7] RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
+/bin/sh: 1: ./gradlew: not found        (exit 127)
+```
+
+파일은 있는데 "not found"다 — 셰뱅이 `#!/bin/sh\r`가 되어 `\r`까지 인터프리터 이름으로 읽힌다.
+
+```bash
+git ls-files --eol gradlew        # w/crlf 로 나오면 아래를 실행
+rm gradlew && git checkout -- gradlew
+```
+
+**③ 검증 스크립트를 돌릴 때만 — `python3`**
+
+앱 실행(`docker compose up`)에는 파이썬이 필요 없다. `docs/verify/`의 도구에만 쓰인다.
+
+Windows는 `python3`이 **Microsoft Store 앱 실행 별칭(스텁)** 으로 잡히는 일이 있다.
+스텁은 `Python ` 한 줄만 찍고 `exit 49`로 끝나며 **스크립트를 실행하지 않는다** —
+아무 일도 없이 성공처럼 보인다. 저장소의 `pyguard.sh`가 이 경우를 잡아 안내와 함께 중단하므로
+**조용히 잘못된 결과가 나오지는 않는다.** 안내대로 조치하면 된다.
+
+```bash
+which -a python3        # 경로에 WindowsApps 가 보이면 스텁이다
+```
+
 ## 로컬 개발
 
 애플리케이션은 호스트에서, DB만 컨테이너로 띄우는 방식.
